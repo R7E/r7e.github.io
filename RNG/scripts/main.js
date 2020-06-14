@@ -40,7 +40,9 @@ $(function() {
             "across the desert is a @object but it is guarded by a @description @animal",
             "every month on teh full moon a @animal runs through the town. @person is missing and @person fears for their @object",
             "@description @animal and @description @animal are fighting. @person wants you to stop it",
-            "@person has @description @object and @person wants you to bring it back. They give you a @description @object as a prepayment and promise to pay @payment more"
+            "@person has @description @object and @person wants you to bring it back. They give you a @description @object as a prepayment and promise to pay @payment more",
+            "@animal is actually @person, they need @description @object from @person to change back",
+            "@animal has followed you all day dragging a @description @object behind it"
         ],
         animal: [
             "dog",
@@ -58,8 +60,12 @@ $(function() {
             "troll",
             "ogre",
             "devil",
-            "zombies",
-            "skeletons"
+            "zombie",
+            "skeleton",
+            "werewolf",
+            "owl",
+            "giant beetle",
+            "puppy"
             
         ],
         payment: [
@@ -85,6 +91,8 @@ $(function() {
             "400 gold",
             "600 gold",
             "in blood",
+            "a dozen eggs",
+            "an all incusive trip to the ocean side"
 
         ],
         person: [
@@ -117,7 +125,12 @@ $(function() {
             "a local bard",
             "a traveling bard",
             "a fighter",
-            "someone whispering at your table"
+            "someone whispering at your table",
+            "the girl sitting by the fountain",
+            "the theif",
+            "a dwarf",
+            "an elf",
+            "a guy with a sword",
         ],
         looking: [
             "looking for",
@@ -128,7 +141,11 @@ $(function() {
             "screaming about",
             "hearings whisperings of",
             "reading in a dusty old book about",
-            "talking loudly about"
+            "talking loudly about",
+            "talking in hushed tones about",
+            "looking at a treasure map to",
+            "whispering about",
+            "sneaking out of town with",
         ],
         trouble: [
 
@@ -148,7 +165,11 @@ $(function() {
             "plotting something evil",
             "staring down the party",
             "flying around",
-            "eating people"
+            "eating people",
+            "singing",
+            "sighing",
+            "pondering",
+            "roaring"
 
         ],
         object: [
@@ -175,7 +196,13 @@ $(function() {
             "wooden chest",
             "coin purse",
             "box",
-            "booklet"
+            "booklet",
+            "diadem",
+            "flag",
+            "banner",
+            "lantern",
+            "banner of the king",
+            "jewlery"
         ],
         description: [
             "red",
@@ -209,7 +236,11 @@ $(function() {
             "masterwork",
             "artifact",
             "fluffy",
-            "undead"
+            "undead",
+            "soft",
+            "wierd",
+            "odd",
+            "dangerous"
         ]
     });
 
