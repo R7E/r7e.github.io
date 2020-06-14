@@ -1,0 +1,30 @@
+{
+    "heading": [
+        "This is a heading",
+        "This is the second heading"
+    ],
+
+    "response": [
+        "This is a response",
+        "Woop second response",
+        "This response is the third"
+    ],
+
+    "template": [
+        "Big @color @animal",
+        "Silly @animal with @color fur"
+    ],
+
+    "animal": [
+        "dog",
+        "cat",
+        "rabbit"
+    ],
+
+    "color": [
+        "red",
+        "blue",
+        "green",
+        "yellow"
+    ]
+}
