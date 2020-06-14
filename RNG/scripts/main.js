@@ -24,7 +24,9 @@ $(function() {
             "that will give my players nightmares",
             "hard pass on that one",
             "you didn't try at all with that",
-            "yawn"
+            "yawn",
+            "the grammer is wrong on that one",
+        
         ],
         template: [
             "@person is @looking a @description @object",
@@ -33,7 +35,12 @@ $(function() {
             "A @animal is lost, @person will pay @payment for it's safe return",
             "A @animal has killed and will kill again if not stopped, @person will pay @payment for it's head",
             "deep in the woods is a cave that contains the @description @object",
-            "@person says that @person needs to disapear, they will pay @payment"
+            "@person says that @person needs to disapear, they will pay @payment",
+            "@person walks up to you and begins talking about @object but gets distracted by @person. They whisper they will pay @payment for it discretely",
+            "across the desert is a @object but it is guarded by a @description @animal",
+            "every month on teh full moon a @animal runs through the town. @person is missing and @person fears for their @object",
+            "@description @animal and @description @animal are fighting. @person wants you to stop it",
+            "@person has @description @object and @person wants you to bring it back. They give you a @description @object as a prepayment and promise to pay @payment more"
         ],
         animal: [
             "dog",
@@ -49,7 +56,10 @@ $(function() {
             "slug",
             "yeti",
             "troll",
-            "ogre"
+            "ogre",
+            "devil",
+            "zombies",
+            "skeletons"
             
         ],
         payment: [
@@ -92,10 +102,22 @@ $(function() {
             "The farmer's daughter's boyfriend",
             "the cook",
             "the local magic store owner",
-            "bar tender",
-            "black smith",
+            "the bar tender",
+            "the black smith",
             "the wizard",
             "the mage",
+            "the coachman",
+            "the necromancer",
+            "the old man in the woods",
+            "the fisherman",
+            "the woman in the tavern",
+            "the house keeper",
+            "the bounty hunter",
+            "the huntress",
+            "a local bard",
+            "a traveling bard",
+            "a fighter",
+            "someone whispering at your table"
         ],
         looking: [
             "looking for",
@@ -105,7 +127,7 @@ $(function() {
             "paying hansomly for",
             "screaming about",
             "hearings whisperings of",
-            "reading in a dusty old book that once",
+            "reading in a dusty old book about",
             "talking loudly about"
         ],
         trouble: [
@@ -116,7 +138,7 @@ $(function() {
             "dancing",
             "puffing up",
             "rampaging through the city",
-            "entereing the kings court",
+            "entering the kings court",
             "stopping to smell the roses",
             "threatening bystanders",
             "making a mess",
@@ -147,7 +169,13 @@ $(function() {
             "set of armor",
             "jar with a hand in it",
             "jar with magical essence in it",
-            "healing potions"
+            "healing potions",
+            "skull",
+            "scales",
+            "wooden chest",
+            "coin purse",
+            "box",
+            "booklet"
         ],
         description: [
             "red",
@@ -188,7 +216,7 @@ $(function() {
     // // Populate using a JSON file
     // WTF.init( 'sample.json' );
 
-    // Populate using a Google spreadsheet ID (you must publish it first!)
+    // // Populate using a Google spreadsheet ID (you must publish it first!)
     // @see https://support.google.com/drive/answer/37579?hl=en
     // WTF.init( '0AvG1Hx204EyydF9ub1M2cVJ3Z1VGdDhTSWg0ZV9LNGc' );
 
