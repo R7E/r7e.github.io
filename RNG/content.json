@@ -54,8 +54,6 @@
         "@cons@vowel @cons@vowel@syl the @monster is @activity @person is paying @payment to stop it.",
         "@person is feeling @feeling, @person suggests bringing them @description @object to help them.",
         "In the @feeling woods there is a @odesc @object called @cons@vowel@syl but it is guarded by a @monster."
-
-
     ],
 
     "animal": [
@@ -521,7 +519,6 @@
         "Suspicious",
         "Ungrounded",
         "Unsure"
-
     ],
 
     "looking": [
