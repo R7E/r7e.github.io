@@ -13,10 +13,11 @@ $(function() {
     //         "*snort*",       
     //     ],
     //     template: [
-    //         // "@person is @looking a @description @object",
+    //         "@animal is @looking a @description @object",
+
     //     ],
     //     animal: [
-    //         "dog",            
+    //         "doőg",            
     //     ],
     //     payment: [
     //         "hansomly",
@@ -36,13 +37,18 @@ $(function() {
     //     description: [
     //         "red",    
     //     ],
+
+    
+    //     "monster": [
+    //         "Ogre",
+    //     ],
     //     odesc: [
     //         "red",
     //     ]
     // });
 
     // Populate using a JSON file
-    WTF.init('content.json');
+     WTF.init('content.json');
     // needs to have a web server for ajax. https://stackoverflow.com/questions/19706046/how-to-read-an-external-local-json-file-in-javascript
     
     // // Populate using a Google spreadsheet ID (you must publish it first!)
