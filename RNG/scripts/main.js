@@ -2,6 +2,7 @@
 $(function() {
 
     // Populate using an object literal
+    // Used for making new stuff on my laptop
 
     // WTF.init({
 
@@ -41,7 +42,7 @@ $(function() {
     // });
 
     // Populate using a JSON file
-    WTF.init('sampleCopy.json');
+    WTF.init('content.json');
     // needs to have a web server for ajax. https://stackoverflow.com/questions/19706046/how-to-read-an-external-local-json-file-in-javascript
     
     // // Populate using a Google spreadsheet ID (you must publish it first!)

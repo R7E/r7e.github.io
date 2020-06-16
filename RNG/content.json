@@ -14,6 +14,7 @@
         "this should be easy",
         "this is a little difficult"
     ],
+
     "response": [
         "*snort*",
         "No, give me another one",
@@ -28,8 +29,8 @@
         "the grammer is wrong on that one",
         "boring",
         "that was the same as the last recomendation you made"
-
     ],
+
     "template": [
         "@person is @looking a @description @object",
         "A @description @animal is @activity while @activity",
@@ -47,7 +48,9 @@
         "a @animal has followed you all day dragging a @description @object behind it",
         "@person has been shrunk and placed in a @object, @person will pay @payment to free them",
         "@person offers you a @object to take the @animal to the next town, on the way there you are stopped by a @odesc @animal"
+
     ],
+
     "animal": [
         "dog",
         "cat",
@@ -70,8 +73,8 @@
         "owl",
         "giant beetle",
         "puppy"
-
     ],
+
     "payment": [
         "hansomly",
         "100 gold",
@@ -97,8 +100,8 @@
         "in blood",
         "a dozen eggs",
         "an all incusive trip to the ocean side"
-
     ],
+
     "person": [
         "the mayor",
         "the local theives guild",
@@ -136,6 +139,7 @@
         "an elf",
         "a guy with a sword"
     ],
+
     "looking": [
         "looking for",
         "searching for",
@@ -151,9 +155,7 @@
         "whispering about",
         "sneaking out of town with"
     ],
-    "trouble": [
 
-    ],
     "activity": [
         "running around",
         "dancing",
@@ -174,8 +176,8 @@
         "sighing",
         "pondering",
         "roaring"
-
     ],
+
     "object": [
         "hat",
         "sword",
@@ -208,6 +210,7 @@
         "banner of the king",
         "jewlery"
     ],
+
     "description": [
         "red",
         "blue",
@@ -262,6 +265,7 @@
         "dangerous",
         "magical"
     ],
+
     "odesc": [
         "red",
         "blue",
@@ -292,6 +296,12 @@
         "bautiful",
         "briliant",
         "dramatic"
+    ],
 
+    "color": [
+        "red",
+        "blue",
+        "green",
+        "yellow"
     ]
 }
