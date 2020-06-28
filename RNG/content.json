@@ -55,7 +55,9 @@
         "@cons@vowel @cons@vowel@syl the @monster is @activity, @person is paying @payment to stop it.",
         "@person is feeling @feeling, @person suggests bringing them @description @object to help them.",
         "you all awaken in the morning feeling @feeling, there is a @description note by the bed stating that if you do not bring @object to @person you will die.",
-        "In the @feeling woods there is a @odesc @object called @cons@vowel@syl but it is guarded by a @monster."
+        "Under the @odesc @loc there is a @description @object called @cons@vowel@syl but it is guarded by a @odesc @monster.",
+        "In the @feeling @loc there is a @odesc @object called @cons@vowel@syl but it is guarded by a @odesc @monster.",
+        "while in @cons@vowel@syl @loc a @feeling @monster attacks. it has been sent by @cons@vowel@syl @person."
     ],
 
     "animal": [
@@ -80,6 +82,30 @@
         "owl",
         "giant beetle",
         "puppy"
+    ],
+
+    "loc": [
+        "city",
+        "town",
+        "woods",
+        "forest",
+        "cave",
+        "dungeon",
+        "cave",
+        "island",
+        "tower",
+        "inverted tower",
+        "ship",
+        "trail",
+        "road",
+        "castle",
+        "light house",
+        "magic shop",
+        "black smithy",
+        "local store",
+        "well",
+        "library",
+        "catacombs"
     ],
 
     "syl": [
