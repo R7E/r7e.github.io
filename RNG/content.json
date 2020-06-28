@@ -34,15 +34,15 @@
     "template": [
         "@person is @looking a @description @object",
         "A @description @animal is @activity while @activity.",
-        "@person stole a @description @object from @person, they will pay @payment to get it back.",
-        "A @animal is lost, @person will pay @payment for it's safe return.",
-        "A @animal has killed and will kill again if not stopped, @person will pay @payment for it's head.",
+        "@cons@vowel @cons@vowel@syl @person stole a @description @object from @cons@vowel @cons@vowel@syl @person, they will pay @payment to get it back.",
+        "A @animal is lost, @cons@vowel @cons@vowel@syl @person will pay @payment for it's safe return.",
+        "A @animal has killed and will kill again if not stopped, @cons@vowel @cons@vowel@syl @person will pay @payment for it's head.",
         "deep in the woods is a cave that contains the @description @object.",
-        "@person says that @person needs to disappear, they will pay @payment.",
-        "@person walks up to you and begins talking about @object but gets distracted by @person. They whisper they will pay @payment for it discretely.",
+        "@cons@vowel @cons@vowel@syl @person says that @cons@vowel @cons@vowel@syl @person needs to disappear, they will pay @payment.",
+        "@cons@vowel @cons@vowel@syl @person walks up to you and begins talking about @odesc @object. They whisper they will pay @payment for it discretely.",
         "across the desert is a @color @description @object but it is guarded by a @description @animal.",
         "every month on the full moon a @odesc @animal runs through the town.",
-        "@person is missing and @person fears for their @object.",
+        "@person is missing and @cons@vowel @cons@vowel@syl @person fears for their @object.",
         "@description @animal and @description @animal are fighting. @person wants you to stop it.",
         "@person has @description @object and @person wants you to bring it back. They give you a @description @object as a prepayment and promise to pay @payment more.",
         "a @animal is actually @cons@vowel@syl @person, they need @description @object from @cons@vowel@syl @person to change back.",
@@ -54,6 +54,7 @@
         "@cons@vowel@syl @person is @activity @person is paying @payment to stop it.",
         "@cons@vowel @cons@vowel@syl the @monster is @activity, @person is paying @payment to stop it.",
         "@person is feeling @feeling, @person suggests bringing them @description @object to help them.",
+        "you all awaken in the morning feeling @feeling, there is a @description note by the bed stating that if you do not bring @object to @person you will die.",
         "In the @feeling woods there is a @odesc @object called @cons@vowel@syl but it is guarded by a @monster."
     ],
 
@@ -607,7 +608,8 @@
         "rod",
         "ring",
         "broomstick",
-        "jewelry"
+        "a bouquet",
+        "jewels"
     ],
 
     "description": [
