@@ -197,9 +197,10 @@ $(function() {
         
     // });
 
-    Populate using a JSON file
+    // Populate using a JSON file
      WTF.init('campaignContent.json');
-    needs to have a web server for ajax. https://stackoverflow.com/questions/19706046/how-to-read-an-external-local-json-file-in-javascript
+    // needs to have a web server for ajax. https://stackoverflow.com/questions/19706046/how-to-read-an-external-local-json-file-in-javascript
+
     
     // // Populate using a Google spreadsheet ID (you must publish it first!)
     // @see https://support.google.com/drive/answer/37579?hl=en
