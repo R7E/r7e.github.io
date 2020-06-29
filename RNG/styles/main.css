@@ -204,6 +204,15 @@ header h1 {
 	display: none;
 }
 
+#page-container {
+	position: relative;
+	min-height: 100vh;
+  }
+
+#content-wrap {
+	padding-bottom: 2.5rem;    /* Footer height */
+  }
+
 #output {
 	font-size: 48px;
 	line-height: 48px;
