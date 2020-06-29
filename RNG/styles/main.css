@@ -211,11 +211,11 @@ header h1 {
 }
 
 #output.animate {
-	-webkit-transition: opacity 0.5s ease-out;
-	-moz-transition: opacity 0.5s ease-out;
-	-ms-transition: opacity 0.5s ease-out;
-	-o-transition: opacity 0.5s ease-out;
-	-transition: opacity 0.5s ease-out;
+	-webkit-transition: opacity 0.75s ease-out;
+	-moz-transition: opacity 0.75s ease-out;
+	-ms-transition: opacity 0.75s ease-out;
+	-o-transition: opacity 0.75s ease-out;
+	-transition: opacity 0.75s ease-out;
 }
 
 noscript {
@@ -287,7 +287,7 @@ footer a:hover {
 }
 
 /* Portrait and Landscape */
-@media only screen and (min-device-width: 375px) and (max-device-width: 667px) and (-webkit-min-device-pixel-ratio: 2) {
+@media only screen and (max-device-width: 667px) and (-webkit-min-device-pixel-ratio: 2) {
 	#generate {
 		font-size: 25px;
 	}
