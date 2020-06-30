@@ -17,19 +17,19 @@
     "template": [
         "The players are @occupationpl looking for @lookingFor. On their way they meet @mentor. They @help. But, @tragedy. The party learns that @evilIntroduction. It all culminates @bossFight.",
         "The players are @occupationpl looking for @lookingFor. @evilIntroduction. While fleeing they meet @mentor. But, @tragedy. The final battle happens @bossFight.",
-        "Call to adventure. Supernatural aid. Threshold Guardian. Helper. Mentor. Challenges and Temptations. Helper. Revelation. Abyss of death and rebirth. Atonement. Return."
+        "@Calltoadventure @Supernaturalaid @ThresholdGuardian @Helper @Mentor @ChallengesandTemptations @Helper @Revelation @Abyssofdeathandrebirth @Atonement @Return"
     ],
-    "Call to adventure": [
+    "Calltoadventure": [
         "The party comes together at the death of an acquaintance. Their last will and testament names them the beneficiary of their estate in a far off dangerous land.",
         "A wizard saves the party from a monster attack they were loosing. At the end of the fight the wizard offers to take them to train at his college.",
         "The party's village is burnt to the ground while they are hunting in the forest. When they come back there is a troop of soldiers saddling up. They invite the party to come with them to hunt down those that destroyed everything they know."
     ],
-    "Supernatural aid": [
+    "Supernaturalaid": [
         "A powerful cleric offers a blessing to aid them on their way.",
         "A wizard teaches them a magic spell to help them when things feel hopeless.",
         "A celestial offers an hour of service because of the valor they have seen."
     ],
-    "Threshold Guardian": [
+    "ThresholdGuardian": [
         "At the start of their journey a great beast blocks the only path.",
         "A sorcerer requires a test of strength to enter their domain.",
         "A druid requires a magical item from a shrine."
@@ -37,6 +37,9 @@
     "Helper":[
         "A young druid volunteers to follow along and help.",
         "A young page eagerly comes along to help if they can.",
+        "While the party is lost a friendly fey offers to guide them to the path again.",
+        "A talking animal lets the party know of a new way through their difficulties.",
+        "An old friend meets up with the party and shows an alternative out of their troubles.",
         "A old friend meets them on their journey and offers to back track and help them on their way." 
     ],
     "Mentor": [
@@ -44,23 +47,18 @@
         "A skilled bard comes along to make a song of the adventure and teach them the lore of the land.",
         "A traveling merchant joins with the party and teaches them of the past great heroes."
     ],
-    "Challenges and Temptations": [
+    "ChallengesandTemptations": [
         "While traveling the party hears cries for help off the path.",
         "The path leads the party through difficult mountain passes filled with monsters",
         "A large monster chases the party into a cave system and they become lost.",
         "The party's mentor becomes sick after a fight and dies shortly afterwards"
-    ],
-    "Helper": [
-        "While the party is lost a friendly fey offers to guide them to the path again.",
-        "A talking animal lets the party know of a new way through their difficulties.",
-        "An old friend meets up with the party and shows an alternative out of their troubles."
     ],
     "Revelation": [
         "The party realize that their traveling companion is actually misdirecting them.",
         "The people who the had previously helped the party end up betraying them to their foes at a critical moment.",
         "One morning the party wakes and their money is gone along with a traveling companion."
     ],
-    "Abyss of death and rebirth": [
+    "Abyssofdeathandrebirth": [
         "After an unfair fight the party is thrown into a dungeon.",
         "A hunter who has been stalking the party reveals them selves and kills a traveling companion.",
         "The party's destination is ruined and over run with monsters."
