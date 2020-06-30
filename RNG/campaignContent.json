@@ -15,6 +15,9 @@
         "Click for new campaign."
     ],
     "template": [
+        "@Calltoadventure @Supernaturalaid @ThresholdGuardian @Helper @Mentor @ChallengesandTemptations @Helper @Revelation @Abyssofdeathandrebirth @Atonement @Return"
+    ],
+    "Oldtemplate": [
         "The players are @occupationpl looking for @lookingFor. On their way they meet @mentor. They @help. But, @tragedy. The party learns that @evilIntroduction. It all culminates @bossFight.",
         "The players are @occupationpl looking for @lookingFor. @evilIntroduction. While fleeing they meet @mentor. But, @tragedy. The final battle happens @bossFight.",
         "@Calltoadventure @Supernaturalaid @ThresholdGuardian @Helper @Mentor @ChallengesandTemptations @Helper @Revelation @Abyssofdeathandrebirth @Atonement @Return"
