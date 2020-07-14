@@ -1,15 +1,58 @@
-</html>
-<html>
-<header>    <link rel="stylesheet" type="text/css" href="indexstyle.css">
-</header>
+<!doctype html>
+<html class="no-js" lang="">
+
+<head>
+    <meta charset="utf-8">
+    <title></title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <meta property="og:title" content="">
+    <meta property="og:type" content="">
+    <meta property="og:url" content="">
+    <meta property="og:image" content="">
+
+    <link rel="manifest" href="site.webmanifest">
+    <link rel="apple-touch-icon" href="icon.png">
+    <!-- Place favicon.ico in the root directory -->
+
+    <link rel="stylesheet" href="css/normalize.css">
+    <link rel="stylesheet" href="css/indexstyle.css">
+
+    <meta name="theme-color" content="#fafafa">
+</head>
 
 <body>
-    <H2>Rob's Projects</H2>
-    <nav>Project Page</nav>
-    <a href="./planner/DDResources.html">D&ampD Planner</a>
-    <a href="./RNG/DMRNG.html">DM RNG</a>
-    <a href="./RNG/Campaign.html">Campaign Generator</a>
+
+    <div class="navbar">
+        <a href="#home">Home</a>
+        <a href="#news">News</a>
+        <a href="#contact">Contact</a>
+    </div>
+
+    <div class="main">
+        <H2>Rob's Projects</H2>
+        <nav>Project Page</nav>
+        <p><a href="./planner/DDResources.html">D&ampD Planner</a></p>
+        <p><a href="./RNG/DMRNG.html">DM RNG</a></p>
+        <p><a href="./RNG/Campaign.html">Campaign Generator</a></p>
+        <script src="js/vendor/modernizr-3.11.2.min.js"></script>
+        <script src="js/plugins.js"></script>
+        <script src="js/main.js"></script>
+    </div>
+    <!-- Google Analytics: change UA-XXXXX-Y to be your site's ID. -->
+    <script>
+        window.ga = function () {
+            ga.q.push(arguments)
+        };
+        ga.q = [];
+        ga.l = +new Date;
+        ga('create', 'UA-XXXXX-Y', 'auto');
+        ga('set', 'anonymizeIp', true);
+        ga('set', 'transport', 'beacon');
+        ga('send', 'pageview')
+    </script>
+    <script src="https://www.google-analytics.com/analytics.js" async></script>
 </body>
-<footer></footer>
 
 </html>
