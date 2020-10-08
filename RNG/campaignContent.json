@@ -1,6 +1,6 @@
 {
     "heading": [
-        "In the middle of winter a man stumbles into the party. He thrusts a paper into one of their hands saying to keep it safe.",
+        "In the middle of winter a man stumbles    into the party. He thrusts a paper into one of their hands saying to keep it safe.",
         "In the spring time as the snow melts one of the party members uncovers a secret.",
         "Summer time is always hot, unfortunately this summer is not like the last. snow still covers the ground.",
         "Talk of war has been whispered for the past year. It will break out any moment.",
@@ -8,14 +8,88 @@
         "Shadows have been seen in the woods, people are starting to disappear at night.",
         "No one likes their jobs, but it is the only way to stay alive.",
         "The king is offering a great reward for adventurers who are able to bring back something special for him.",
-        "The baron has a secret that has been buried deep in the earth. Unfortunately when he went looking for it again it was no where to be found. Only foot steps leading away."
+        "The baron has a secret that has been buried deep in the earth. Unfortunately when he went looking for it again it was no where to be found. Only foot steps leading away.",
+        "Adventuring has always been the best way to make a fortune. Those few that survive live a lavish lifestyle."
     ],
     "response": [
-        "Click for new campaign."      
+        "Click for new campaign."
     ],
     "template": [
+        "@Calltoadventure @Supernaturalaid @ThresholdGuardian @Helper @Mentor @ChallengesandTemptations @Helper @Revelation @Abyssofdeathandrebirth @Atonement @Return"
+    ],
+    "Oldtemplate": [
         "The players are @occupationpl looking for @lookingFor. On their way they meet @mentor. They @help. But, @tragedy. The party learns that @evilIntroduction. It all culminates @bossFight.",
-        "The players are @occupationpl looking for @lookingFor. @evilIntroduction. While fleeing they meet @mentor. But, @tragedy. The final battle happens @bossFight."
+        "The players are @occupationpl looking for @lookingFor. @evilIntroduction. While fleeing they meet @mentor. But, @tragedy. The final battle happens @bossFight.",
+        "@Calltoadventure @Supernaturalaid @ThresholdGuardian @Helper @Mentor @ChallengesandTemptations @Helper @Revelation @Abyssofdeathandrebirth @Atonement @Return"
+    ],
+    "Calltoadventure": [
+        "The party comes together at the death of an acquaintance. Their last will and testament names them the beneficiary of their estate in a far off dangerous land.",
+        "A wizard saves the party from a monster attack they were loosing. At the end of the fight the wizard offers to take them to train at his college.",
+        "The party's village is burnt to the ground while they are hunting in the forest. When they come back there is a troop of soldiers saddling up. They invite the party to come with them to hunt down those that destroyed everything they know."
+    ],
+    "Supernaturalaid": [
+        "A powerful cleric offers a blessing to aid them on their way.",
+        "A wizard teaches them a magic spell to help them when things feel hopeless.",
+        "A celestial offers an hour of service because of the valor they have seen."
+    ],
+    "ThresholdGuardian": [
+        "At the start of their journey a great beast blocks the only path.",
+        "A sorcerer requires a test of strength to enter their domain.",
+        "A druid requires a magical item from a shrine."
+    ],
+    "Helper":[
+        "A young druid volunteers to follow along and help.",
+        "A young page eagerly comes along to help if they can.",
+        "While the party is lost a friendly fey offers to guide them to the path again.",
+        "A talking animal lets the party know of a new way through their difficulties.",
+        "An old friend meets up with the party and shows an alternative out of their troubles.",
+        "A old friend meets them on their journey and offers to back track and help them on their way." 
+    ],
+    "Mentor": [
+        "A renowned fighter hears of their travels and offers to teach them about the ways of the blade.",
+        "A skilled bard comes along to make a song of the adventure and teach them the lore of the land.",
+        "A traveling merchant joins with the party and teaches them of the past great heroes."
+    ],
+    "ChallengesandTemptations": [
+        "While traveling the party hears cries for help off the path.",
+        "The path leads the party through difficult mountain passes filled with monsters",
+        "A large monster chases the party into a cave system and they become lost.",
+        "The party's mentor becomes sick after a fight and dies shortly afterwards"
+    ],
+    "Revelation": [
+        "The party realize that their traveling companion is actually misdirecting them.",
+        "The people who the had previously helped the party end up betraying them to their foes at a critical moment.",
+        "One morning the party wakes and their money is gone along with a traveling companion."
+    ],
+    "Abyssofdeathandrebirth": [
+        "After an unfair fight the party is thrown into a dungeon.",
+        "A hunter who has been stalking the party reveals them selves and kills a traveling companion.",
+        "The party's destination is ruined and over run with monsters."
+    ],
+    "Atonement": [
+        "The party remembers a magical item that they were given and it helps them to overcome an obstacle.",
+        "A party member's god reveals a new way ou tof their difficulties.",
+        "The party comes across their enemies in a unguarded moment and are victorious."
+    ],
+    "Return": [
+        "The party succeeds at their quest and are hailed as heroes throughout the land.",
+        "The party return home with gold and jewels to spare.",
+        "The party learn new skills and are able to teach others what they have learned."
+    ],
+    "monsterType": [
+        "Abberation",
+        "Beast",
+        "Celestial",
+        "Dragon",
+        "Elemental",
+        "Fey",
+        "Fiend",
+        "Giant",
+        "Humanoid",
+        "Monstrosity",
+        "Ooze",
+        "Plant",
+        "Undead"
     ],
     "occupationpl": [
         "adventurers",
@@ -90,7 +164,7 @@
         "the path is washed out and a new way is needed",
         "the forest is overgrown and will take twice as long to get through",
         "a message comes that a character's loved one is dying",
-        "during the night a thief steals all their money",  
+        "during the night a thief steals all their money",
         "the reach their destination only to find it burnt to the ground",
         "their friend dies in combat",
         "their traveling companion is mortally wounded",
@@ -139,12 +213,12 @@
         "a demon has made a lair in the party's destination",
         "a devil has made a lair in the party's destination",
         "an abomination has made a lair in the party's destination",
-        "a necromancer has heard tale of their deeds and is setting a trap for them",  
-        "a wizard has heard tale of their deeds and is setting a trap for them",  
-        "a thief has heard tale of their deeds and is setting a trap for them",  
-        "a hobgoblin has heard tale of their deeds and is setting a trap for them",  
-        "a mindflayer has heard tale of their deeds and is setting a trap for them",  
-        "a drow has heard tale of their deeds and is setting a trap for them",            
+        "a necromancer has heard tale of their deeds and is setting a trap for them",
+        "a wizard has heard tale of their deeds and is setting a trap for them",
+        "a thief has heard tale of their deeds and is setting a trap for them",
+        "a hobgoblin has heard tale of their deeds and is setting a trap for them",
+        "a mindflayer has heard tale of their deeds and is setting a trap for them",
+        "a drow has heard tale of their deeds and is setting a trap for them",
         "a gnome has heard tale of their deeds and is setting a trap for them"
     ],
     "bossFight": [
