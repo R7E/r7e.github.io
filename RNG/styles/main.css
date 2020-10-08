@@ -118,7 +118,7 @@ q:after {
 a {
 	margin: 0;
 	padding: 0;
-	font-size: 100%;
+	/* font-size: 100%; */
 	vertical-align: baseline;
 	background: transparent;
 }
@@ -184,13 +184,14 @@ body {
 }
 
 #wrapper {
-	width: 710px;
+	/* width: 710px; */
+	width: 1000px;
 	margin: 0 auto;
 }
 
 header,
 article {
-	font-weight: 800;
+	font-weight: 600;
 	color: #000;
 }
 
@@ -220,11 +221,11 @@ header h1 {
 }
 
 #output.animate {
-	-webkit-transition: opacity 0.7s ease-out;
-	-moz-transition: opacity 0.7s ease-out;
-	-ms-transition: opacity 0.7s ease-out;
-	-o-transition: opacity 0.7s ease-out;
-	-transition: opacity 0.7s ease-out;
+	-webkit-transition: opacity 0.75s ease-out;
+	-moz-transition: opacity 0.75s ease-out;
+	-ms-transition: opacity 0.75s ease-out;
+	-o-transition: opacity 0.75s ease-out;
+	-transition: opacity 0.75s ease-out;
 }
 
 noscript {
@@ -236,7 +237,7 @@ noscript {
 
 #output dd {
 	display: block;
-	margin: 60px 0;
+	margin: 20px 0;
 }
 
 #generate {
@@ -298,7 +299,7 @@ footer a:hover {
 }
 
 /* Portrait and Landscape */
-@media only screen and (min-device-width: 375px) and (max-device-width: 667px) and (-webkit-min-device-pixel-ratio: 2) {
+@media only screen and (max-device-width: 667px) and (-webkit-min-device-pixel-ratio: 2) {
 	#generate {
 		font-size: 25px;
 	}
