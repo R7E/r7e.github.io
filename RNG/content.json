@@ -16,19 +16,7 @@
     ],
 
     "response": [
-        "*snort* (click for more)",
-        "No, give me another one (click for more)",
-        "Too predictable, try again (click for more)",
-        "Um, no (click for more)",
-        "Did that last week (click for more)",
-        "interesting, but no (click for more)",
-        "that will give my players nightmares (click for more)",
-        "hard pass on that one (click for more)",
-        "you didn't try at all with that (click for more)",
-        "yawn (click for more)",
-        "the grammar is wrong on that one (click for more)",
-        "boring (click for more)",
-        "that was the same as the last recommendation you made (click for more)"
+        "click here for another one",
     ],
 
     "template": [
@@ -55,9 +43,7 @@
         "@cons@vowel @cons@vowel@syl the @monster is @activity, @person is paying @payment to stop it.",
         "@person is feeling @feeling, @person suggests bringing them @description @object to help them.",
         "you all awaken in the morning feeling @feeling, there is a @description note by the bed stating that if you do not bring @object to @person you will die.",
-        "Under the @odesc @loc there is a @description @object called @cons@vowel@syl but it is guarded by a @odesc @monster.",
-        "In the @feeling @loc there is a @odesc @object called @cons@vowel@syl but it is guarded by a @odesc @monster.",
-        "while in @cons@vowel@syl @loc a @feeling @monster attacks. it has been sent by @cons@vowel@syl @person."
+        "In the @feeling woods there is a @odesc @object called @cons@vowel@syl but it is guarded by a @monster."
     ],
 
     "animal": [
@@ -82,30 +68,6 @@
         "owl",
         "giant beetle",
         "puppy"
-    ],
-
-    "loc": [
-        "city",
-        "town",
-        "woods",
-        "forest",
-        "cave",
-        "dungeon",
-        "cave",
-        "island",
-        "tower",
-        "inverted tower",
-        "ship",
-        "trail",
-        "road",
-        "castle",
-        "light house",
-        "magic shop",
-        "black smithy",
-        "local store",
-        "well",
-        "library",
-        "catacombs"
     ],
 
     "syl": [
