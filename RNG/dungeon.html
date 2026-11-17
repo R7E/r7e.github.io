@@ -88,6 +88,8 @@
     transition:transform .1s;
   }
   input[type=range]:active::-webkit-slider-thumb{transform:scale(1.15)}
+  input[type=range]:disabled{opacity:.35; cursor:not-allowed}
+  label:has(input:disabled) > span{opacity:.5}
   input[type=range]::-moz-range-thumb{
     width:14px; height:14px; border-radius:50%;
     background:#dfe2e7; border:2px solid var(--accent); box-shadow:0 2px 6px rgba(0,0,0,.5);
@@ -112,13 +114,16 @@
   button.primary:hover{filter:brightness(1.05)}
   button.ghost{background:transparent; box-shadow:none; color:var(--muted)}
   button.ghost:hover{color:var(--ink); border-color:#3d4450; background:rgba(255,255,255,.03)}
+  body{height:100vh; height:100dvh}
   main{
     flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
-    padding:26px 18px 8px; gap:14px; min-height:0;
+    padding:14px 18px 10px; gap:10px; min-height:0;
   }
   .stage{
     position:relative;
-    padding:16px;
+    flex:1 1 0; min-height:240px; width:100%; max-width:1400px;
+    display:flex;
+    padding:12px;
     border-radius:16px;
     background:radial-gradient(120% 120% at 50% 0%, #1f232b, #14161a 70%);
     border:1px solid var(--line);
@@ -131,9 +136,8 @@
     mix-blend-mode:multiply;
   }
   canvas{
-    display:block; max-width:100%; height:auto; border-radius:8px;
-    background:#fbfaf6;
-    box-shadow:0 8px 30px rgba(0,0,0,.55);
+    display:block; width:100%; height:100%; min-height:0; min-width:0;
+    object-fit:contain; /* whole map always fits in the window, aspect kept */
   }
   #status{
     align-self:center;
@@ -172,31 +176,41 @@
     </div>
   </div>
   <label class="group">
-    <span>Map size</span>
-    <select id="size">
-      <option value="32">Small</option>
-      <option value="44" selected>Medium</option>
-      <option value="60">Large</option>
-    </select>
-  </label>
-  <label class="group">
     <span>Target rooms</span>
     <input id="rooms" type="range" min="4" max="30" value="12">
   </label>
   <label class="group">
-    <span>Round corners</span>
-    <select id="round">
-      <option value="0">Off</option>
-      <option value="2">2</option>
-      <option value="3" selected>3</option>
-      <option value="4">4</option>
-      <option value="5">5</option>
+    <span>Smallest room</span>
+    <select id="rmin">
+      <option value="3" selected>3 × 3</option>
+      <option value="4">4 × 4</option>
+      <option value="5">5 × 5</option>
+      <option value="6">6 × 6</option>
+    </select>
+  </label>
+  <label class="group">
+    <span>Largest room</span>
+    <select id="rmax">
+      <option value="4">4 × 4</option>
+      <option value="5">5 × 5</option>
+      <option value="6">6 × 6</option>
+      <option value="7">7 × 7</option>
+      <option value="8" selected>8 × 8</option>
+      <option value="9">9 × 9</option>
+      <option value="10">10 × 10</option>
     </select>
   </label>
   <label class="group">
     <span>Wall height</span>
     <input id="wall" type="range" min="0.2" max="1.4" step="0.1" value="1">
   </label>
+  <div class="group">
+    <span>Projection</span>
+    <div style="display:flex;gap:8px">
+      <button id="viewIso" class="primary">Isometric</button>
+      <button id="viewTop" class="ghost">Top-down</button>
+    </div>
+  </div>
   <label class="group">
     <span>Export scale</span>
     <select id="scale">
@@ -267,24 +281,6 @@ const DIRS={
 };
 
 /*
- * inRoom(rx,ry,rw,rh,R,cx,cy)
- * Cell-level rounded-rectangle test. A cell counts as inside if its center
- * is not in the "cut corner" region beyond an arc of radius R from each
- * inner corner point. R=0 means an ordinary square rectangle.
- * Params: room bbox (rx,ry,rw,rh), corner radius R, cell (cx,cy).
- * Returns: true if the cell is part of the room footprint.
- */
-function inRoom(rx,ry,rw,rh,R,cx,cy){
-  if(R<=0) return true;
-  const px=cx+0.5, py=cy+0.5, r2=R*R;
-  if(px<rx+R && py<ry+R){ const dx=px-(rx+R),dy=py-(ry+R); if(dx*dx+dy*dy>r2) return false; }
-  if(px>rx+rw-R && py<ry+R){ const dx=px-(rx+rw-R),dy=py-(ry+R); if(dx*dx+dy*dy>r2) return false; }
-  if(px<rx+R && py>ry+rh-R){ const dx=px-(rx+R),dy=py-(ry+rh-R); if(dx*dx+dy*dy>r2) return false; }
-  if(px>rx+rw-R && py>ry+rh-R){ const dx=px-(rx+rw-R),dy=py-(ry+rh-R); if(dx*dx+dy*dy>r2) return false; }
-  return true;
-}
-
-/*
  * forEdgeCells(x,y,w,h,attach,fn)
  * Iterates every cell along one edge of a rect and calls fn with:
  *   fn(roomX, roomY, hallX, hallY, t)
@@ -302,23 +298,24 @@ function forEdgeCells(x,y,w,h,attach,fn){
 // ---- generation ----
 
 /*
- * generate(seed, N, count, roundMax)
+ * generate(seed, N, count, rmin, rmax)
  * The whole procedural pipeline. Deterministic for a given seed.
  * Params:
  *   seed     - any string; hashed into the PRNG state.
  *   N        - grid is N×N cells.
  *   count    - target number of rooms.
- *   roundMax - maximum rounded-corner radius (0 disables rounding).
+ *   rmin     - smallest room side length allowed, in cells.
+ *   rmax     - largest room side length allowed, in cells.
  * Returns an object:
  *   { N, owner, rooms, doors, stairs, loops, decor }
  *   owner  : Int16Array, -2 empty, -1 hallway, >=0 room id.
- *   rooms  : array of {id,x,y,w,h,R,seg}.
+ *   rooms  : array of {id,x,y,w,h,seg}.
  *   doors  : Set of "a,b" cell-index pairs (a<b).
  *   stairs : array of {x,y,w,h,dir,rise} stair blocks.
  *   loops  : number of shortcut loops successfully carved.
  *   decor  : array of {type:'fountain'|'pillar', x, y}.
  */
-function generate(seed, N, count, roundMax){
+function generate(seed, N, count, rmin, rmax){
   const rng = mulberry(hash(seed));
 
   /*
@@ -344,25 +341,13 @@ function generate(seed, N, count, roundMax){
   const SZ = [[5,8,4,7],[4,6,3,5],[3,4,3,4],[3,3,3,3]];
   /*
    * sz(depth)
-   * Clamps hallway depth to 0..3 and returns the size range for rooms on it.
+   * Clamps hallway depth to 0..3 and returns the size range for rooms on it,
+   * with every dimension limited to the chosen smallest/largest room size.
    */
-  const sz = d => SZ[Math.min(d,3)];
-
-  /*
-   * pickR(w,h)
-   * Chooses a corner radius for a room of bbox w×h. Returns 0 (square) when
-   * rounding is off, the room is too small, or by a 35% "stay square" chance.
-   * Otherwise returns 2..min(roundMax, cap) where cap leaves a straight cell
-   * on each edge so doors have somewhere to go.
-   */
-  function pickR(w,h){
-    if(roundMax<2) return 0;
-    const cap=Math.floor((Math.min(w,h)-1)/2);
-    const hi=Math.min(roundMax,cap);
-    if(hi<2) return 0;
-    if(rng()<0.35) return 0;
-    return ri(2,hi);
-  }
+  const sz = d => {
+    const cl = v => Math.max(rmin, Math.min(rmax, v));
+    return SZ[Math.min(d,3)].map(cl);
+  };
 
   /*
    * addSeg(x,y,w,h,depth,parent,dir)
@@ -412,23 +397,20 @@ function generate(seed, N, count, roundMax){
   /*
    * tryRoom(x,y,w,h,attach,seg)
    * Attempts to place a room against hallway `seg` on side `attach`.
-   * Picks a corner radius, gathers door candidates along the straight part
-   * of the attach edge, writes the rounded footprint into owner, and adds
-   * one door (two for main-hall rooms sometimes).
+   * Gathers door candidates along the attach edge, writes the room footprint
+   * into owner, and adds one door (two for main-hall rooms sometimes).
    * Returns true on success, false if it can't be placed or has no door.
    */
   function tryRoom(x,y,w,h,attach,seg){
     if(!canPlace(x,y,w,h,attach)) return false;
-    const R = pickR(w,h);
-    const inside = (cx,cy) => inRoom(x,y,w,h,R,cx,cy);
     const cand=[];
     forEdgeCells(x,y,w,h,attach,(rx,ry,hx,hy,t)=>{
-      if(inside(rx,ry) && okc(at(hx,hy),seg)) cand.push({t,a:at(rx,ry),b:at(hx,hy)});
+      if(okc(at(hx,hy),seg)) cand.push({t,a:at(rx,ry),b:at(hx,hy)});
     });
     if(!cand.length) return false;
     const id=rooms.length;
-    rooms.push({id,x,y,w,h,R,seg:seg.id});
-    for(let yy=y;yy<y+h;yy++) for(let xx=x;xx<x+w;xx++) if(inside(xx,yy)) owner[at(xx,yy)]=id;
+    rooms.push({id,x,y,w,h,seg:seg.id});
+    for(let yy=y;yy<y+h;yy++) for(let xx=x;xx<x+w;xx++) owner[at(xx,yy)]=id;
     const f=cand[ri(0,cand.length-1)];
     doors.add(key(f.a,f.b));
     if(seg.depth===0){
@@ -698,6 +680,8 @@ function generate(seed, N, count, roundMax){
 // ---- rendering ----
 
 const TW=56, TH=28, ZH=40, DOOR_H=0.8;
+const MAP_N=32;      // map size is fixed at the old "Small" setting
+const WALL_MAX=1.4;  // tallest wall the slider allows; used so the view never shifts
 const LIGHT={bg:'#fbfaf6',ink:'#1a1a1a',room:'#ffffff',hall:'#efece3',grid:'#d8d4c7',ghost:'#9a978c',wall:'#e9e5d9',low:'#ffffff',door:'#ffffff',badge:'#ffffff'};
 const DARK={bg:'#000000',ink:'#ffffff',room:'#000000',hall:'#0c0c0c',grid:'#333333',ghost:'#8a8a8a',wall:'#141414',low:'#000000',door:'#000000',badge:'#000000'};
 let dark=false, T=LIGHT, INK=T.ink;
@@ -734,17 +718,13 @@ function render(d, wallH, scale){
    */
   const proj=(x,y,z)=>[(x-y)*TW/2,(x+y)*TH/2 - z*ZH];
 
-  // fit the canvas to the projected extents of all non-empty cells
+  // fixed view: extents come from the whole grid at max wall height, not from
+  // the rooms, so the canvas size and map position never change between redraws
   let minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9;
-  const top=Math.max(wallH,1);
-  for(let y=0;y<N;y++) for(let x=0;x<N;x++){
-    if(owner[y*N+x]===-2) continue;
-    for(const [cx,cy] of [[x,y],[x+1,y],[x,y+1],[x+1,y+1]]) for(const z of [0,top]){
-      const [sx,sy]=proj(cx,cy,z);
-      minx=Math.min(minx,sx);maxx=Math.max(maxx,sx);miny=Math.min(miny,sy);maxy=Math.max(maxy,sy);
-    }
+  for(const [cx,cy] of [[0,0],[N,0],[0,N],[N,N]]) for(const z of [0,WALL_MAX]){
+    const [sx,sy]=proj(cx,cy,z);
+    minx=Math.min(minx,sx);maxx=Math.max(maxx,sx);miny=Math.min(miny,sy);maxy=Math.max(maxy,sy);
   }
-  if(minx>maxx){minx=miny=0;maxx=maxy=10}
   const pad=30;
   const W=Math.ceil(maxx-minx+pad*2), H=Math.ceil(maxy-miny+pad*2);
   cv.width=W*scale; cv.height=H*scale;
@@ -757,6 +737,22 @@ function render(d, wallH, scale){
    */
   const P=(x,y,z)=>{const [sx,sy]=proj(x,y,z);return [sx-minx+pad, sy-miny+pad]};
   ctx.lineJoin='round'; ctx.lineCap='round';
+
+  // heavy outer silhouette: the union of every cell's box (floor to wall top), grown by
+  // OUT px and painted behind everything, so a thick line wraps the outside of the whole map
+  {
+    const OUT=5, sil=new Path2D();
+    for(let y=0;y<N;y++) for(let x=0;x<N;x++){
+      if(owner[y*N+x]===-2) continue;
+      const hh=wallH;
+      [P(x,y,hh),P(x+1,y,hh),P(x+1,y,0),P(x+1,y+1,0),P(x,y+1,0),P(x,y+1,hh)]
+        .forEach(([px,py],k)=>k?sil.lineTo(px,py):sil.moveTo(px,py));
+      sil.closePath();
+    }
+    ctx.fillStyle=INK; ctx.strokeStyle=INK; ctx.lineWidth=OUT*2;
+    ctx.fill(sil); ctx.stroke(sil);   // grown silhouette
+    ctx.fillStyle=T.bg; ctx.fill(sil); // knock the inside back out, leaving only the outer band
+  }
 
   /*
    * quad(pts, fill, stroke, lw)
@@ -829,11 +825,17 @@ function render(d, wallH, scale){
    * The four projected corners of a cell's floor quad.
    */
   const floorPts=(x,y)=>[P(x,y,0),P(x+1,y,0),P(x+1,y+1,0),P(x,y+1,0)];
-  for(const [x,y] of cells) quad(floorPts(x,y), owner[y*N+x]>=0?T.room:T.hall, null, 0);
-  for(const [x,y] of cells) quad(floorPts(x,y), null, T.grid, 0.7);
 
   const STEPS=3, SH=0.07, stairAt=new Map();
   for(const s of (d.stairs||[])) for(let yy=s.y;yy<s.y+s.h;yy++) for(let xx=s.x;xx<s.x+s.w;xx++) stairAt.set(yy*N+xx,s);
+
+  // descending flights are a hole in the floor: no floor tile or grid lines there
+  const isPit = i => { const s=stairAt.get(i); return !!s && !s.rise; };
+  for(const [x,y] of cells) if(!isPit(y*N+x)) quad(floorPts(x,y), owner[y*N+x]>=0?T.room:T.hall, null, 0);
+  for(const [x,y] of cells) if(!isPit(y*N+x)) quad(floorPts(x,y), null, T.grid, 0.7);
+  // backing fill for each hole so no gap can show the page background
+  for(const s of (d.stairs||[])) if(!s.rise)
+    quad([P(s.x,s.y,0),P(s.x+s.w,s.y,0),P(s.x+s.w,s.y+s.h,0),P(s.x,s.y+s.h,0)], T.hall, null, 0);
 
   const decorAt=new Map();
   for(const it of (decor||[])) decorAt.set(it.y*N+it.x, it);
@@ -846,6 +848,12 @@ function render(d, wallH, scale){
    */
   function drawSteps(s,x,y){
     const ax=s.dir[1]==='x', fwd=s.dir[0]==='+';
+    if(!s.rise){
+      // a pit can only be seen through its opening: clip to the hole outline
+      ctx.save(); ctx.beginPath();
+      [P(s.x,s.y,0),P(s.x+s.w,s.y,0),P(s.x+s.w,s.y+s.h,0),P(s.x,s.y+s.h,0)].forEach(([px,py],k)=>k?ctx.lineTo(px,py):ctx.moveTo(px,py));
+      ctx.closePath(); ctx.clip();
+    }
     const c = ax ? (fwd ? x-s.x : s.x+s.w-1-x) : (fwd ? y-s.y : s.y+s.h-1-y);
     const boxes=[];
     for(let i=0;i<STEPS;i++){
@@ -854,6 +862,16 @@ function render(d, wallH, scale){
       boxes.push(ax ? {x0:x+t0,x1:x+t1,y0:y,y1:y+1,hi} : {x0:x,x1:x+1,y0:y+t0,y1:y+t1,hi});
     }
     boxes.sort((a,b)=>(a.x0+a.y0)-(b.x0+b.y0));
+    if(!s.rise && (ax ? y===s.y : x===s.x)){
+      // back wall of the hole: hallway style (see-through, grey outline), not a solid room wall.
+      // It continues the hallway wall downward, following the stepped profile of the flight.
+      const pu=(u,z)=> ax ? P(u,s.y,z) : P(s.x,u,z);
+      const u0=ax?x:y, prof=[];
+      for(const b of boxes){ const zt=-b.hi*SH; prof.push([ax?b.x0:b.y0,zt],[ax?b.x1:b.y1,zt]); }
+      const pts=[pu(u0,0),pu(u0+1,0)];
+      for(let k=prof.length-1;k>=0;k--) pts.push(pu(prof[k][0],prof[k][1]));
+      quad(pts,null,T.ghost,1.2);
+    }
     for(const b of boxes){
       if(s.rise){
         // up: shortest step meets the hallway floor, steps grow taller away from it
@@ -861,13 +879,12 @@ function render(d, wallH, scale){
       } else {
         // down: tallest step's top is flush with the hallway floor, tops drop away from it
         const zt=-b.hi*SH, zb=zt-SH;
-        if(ax && y===s.y) quad([P(b.x0,b.y0,zt),P(b.x1,b.y0,zt),P(b.x1,b.y0,0),P(b.x0,b.y0,0)],T.wall,INK,1.2);
-        if(!ax && x===s.x) quad([P(b.x0,b.y0,zt),P(b.x0,b.y1,zt),P(b.x0,b.y1,0),P(b.x0,b.y0,0)],T.wall,INK,1.2);
         quad([P(b.x0,b.y0,zt),P(b.x1,b.y0,zt),P(b.x1,b.y1,zt),P(b.x0,b.y1,zt)],T.room,INK,1.2);
         if(ax) quad([P(b.x1,b.y0,zb),P(b.x1,b.y1,zb),P(b.x1,b.y1,zt),P(b.x1,b.y0,zt)],T.wall,INK,1.2);
         else   quad([P(b.x0,b.y1,zb),P(b.x1,b.y1,zb),P(b.x1,b.y1,zt),P(b.x0,b.y1,zt)],T.wall,INK,1.2);
       }
     }
+    if(!s.rise) ctx.restore();
   }
 
   /*
@@ -879,8 +896,9 @@ function render(d, wallH, scale){
     const cx0=x+0.5, cy0=y+0.5;
     if(it.type==='pillar'){
       const r=0.26, h=wallH;
-      isoBox(cx0-r,cy0-r,cx0+r,cy0+r,0,h,{top:T.room,side:T.wall,line:INK,lw:1.1,topLw:1.2});
+      // base slab first so the column's bottom edges draw on top of it
       quad([P(cx0-r-0.04,cy0-r-0.04,0),P(cx0+r+0.04,cy0-r-0.04,0),P(cx0+r+0.04,cy0+r+0.04,0),P(cx0-r-0.04,cy0+r+0.04,0)],T.room,INK,1.1);
+      isoBox(cx0-r,cy0-r,cx0+r,cy0+r,0,h,{top:T.room,side:T.wall,line:INK,lw:1.1,topLw:1.2});
     } else { // fountain
       const r=0.34, zRim=0.12, zWater=0.07, wr=0.26;
       isoBox(cx0-r,cy0-r,cx0+r,cy0+r,0,zRim,{top:T.wall,side:T.wall,line:INK,lw:1.1});
@@ -896,6 +914,9 @@ function render(d, wallH, scale){
       const y=s-x; if(y<0||y>=N) continue;
       const i=y*N+x, o=owner[i]; if(o===-2) continue;
       const nN=own(x,y-1), nW=own(x-1,y);
+      // descending stairs go first: the low rim walls in front of the hole must draw over them
+      const stHere=stairAt.get(i);
+      if(stHere && !stHere.rise) drawSteps(stHere,x,y);
       // tall back walls: full when solid against rock, half (see-through) when a room/hall sits behind
       if(nN===-2 || !isOpen(i,(y-1)*N+x)){
         const half = nN!==-2 || o===-1, h = wallH;
@@ -906,10 +927,13 @@ function render(d, wallH, scale){
         quad([P(x,y,0),P(x,y+1,0),P(x,y+1,h),P(x,y,h)], half?null:T.wall, half?T.ghost:INK, half?1.2:1.6);
       }
       // low front walls only against empty space
+      // around a descending flight these are see-through (hallway style) so the steps stay visible
+      const pitHere = !!stHere && !stHere.rise;
+      const lowFill = pitHere ? null : T.low, lowLine = pitHere ? T.ghost : INK, lowLw = pitHere ? 1.2 : 1.6;
       if(own(x,y+1)===-2)
-        quad([P(x,y+1,0),P(x+1,y+1,0),P(x+1,y+1,LOW),P(x,y+1,LOW)],T.low,INK,1.6);
+        quad([P(x,y+1,0),P(x+1,y+1,0),P(x+1,y+1,LOW),P(x,y+1,LOW)],lowFill,lowLine,lowLw);
       if(own(x+1,y)===-2)
-        quad([P(x+1,y,0),P(x+1,y+1,0),P(x+1,y+1,LOW),P(x+1,y,LOW)],T.low,INK,1.6);
+        quad([P(x+1,y,0),P(x+1,y+1,0),P(x+1,y+1,LOW),P(x+1,y,LOW)],lowFill,lowLine,lowLw);
 
       // doors
       for(const side of (doorAt.get(i)||[])){
@@ -959,7 +983,7 @@ function render(d, wallH, scale){
       }
 
       if(decorAt.has(i)) drawDecor(decorAt.get(i),x,y);
-      if(stairAt.has(i)) drawSteps(stairAt.get(i),x,y);
+      if(stHere && stHere.rise) drawSteps(stHere,x,y);
     }
   }
 
@@ -973,9 +997,153 @@ function render(d, wallH, scale){
   }
 }
 
+/*
+ * renderTop(d, wallH, scale)
+ * Plan (top-down) view of the same dungeon. There is no depth, so walls are
+ * lines on cell edges, doors are symbols in the wall gaps, stairs are step
+ * bands with an arrow (filled = up, hollow = down, tinted darker as they go
+ * down). Like render(), the canvas size comes from the whole grid so the map
+ * never moves. wallH is accepted for symmetry and ignored.
+ */
+function renderTop(d, wallH, scale){
+  const {N,owner,doors,decor} = d;
+  T = dark ? DARK : LIGHT; INK = T.ink;
+  const cv=$('c'), ctx=cv.getContext('2d');
+  const TS=40, pad=30, OUT=5, STEPS=3;
+  const W=N*TS+pad*2, H=W;
+  cv.width=W*scale; cv.height=H*scale;
+  ctx.setTransform(scale,0,0,scale,0,0);
+  ctx.fillStyle=T.bg; ctx.fillRect(0,0,W,H);
+  ctx.lineJoin='round'; ctx.lineCap='round';
+
+  const X=x=>pad+x*TS, Y=y=>pad+y*TS;
+  const own=(x,y)=>(x<0||y<0||x>=N||y>=N)?-2:owner[y*N+x];
+  const isOpen=(a,b)=>{const oa=owner[a],ob=owner[b];if(oa===ob)return true;return doors.has(a<b?a+','+b:b+','+a);};
+  const line=(x1,y1,x2,y2,lw)=>{ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.strokeStyle=INK;ctx.lineWidth=lw;ctx.stroke();};
+  const dot=(x,y,r)=>{ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=INK;ctx.fill();};
+  const WALL=3;
+
+  // heavy outer silhouette band (same idea as the isometric view)
+  {
+    const sil=new Path2D();
+    for(let y=0;y<N;y++) for(let x=0;x<N;x++) if(owner[y*N+x]!==-2) sil.rect(X(x),Y(y),TS,TS);
+    ctx.fillStyle=INK; ctx.strokeStyle=INK; ctx.lineWidth=OUT*2;
+    ctx.fill(sil); ctx.stroke(sil);
+    ctx.fillStyle=T.bg; ctx.fill(sil);
+  }
+
+  const stairAt=new Map();
+  for(const s of (d.stairs||[])) for(let yy=s.y;yy<s.y+s.h;yy++) for(let xx=s.x;xx<s.x+s.w;xx++) stairAt.set(yy*N+xx,s);
+
+  // floors, then grid (not on stairs)
+  for(let y=0;y<N;y++) for(let x=0;x<N;x++){
+    const o=owner[y*N+x]; if(o===-2) continue;
+    ctx.fillStyle = o>=0 ? T.room : T.hall; ctx.fillRect(X(x),Y(y),TS,TS);
+  }
+  ctx.strokeStyle=T.grid; ctx.lineWidth=0.7;
+  for(let y=0;y<N;y++) for(let x=0;x<N;x++){
+    const i=y*N+x; if(owner[i]===-2 || stairAt.has(i)) continue;
+    ctx.strokeRect(X(x),Y(y),TS,TS);
+  }
+
+  // stairs: step bands, step lines, direction arrow
+  for(const s of (d.stairs||[])){
+    const ax=s.dir[1]==='x', fwd=s.dir[0]==='+';
+    const L=ax?s.w:s.h, n=L*STEPS;
+    const x0=X(s.x), y0=Y(s.y), pw=s.w*TS, ph=s.h*TS;
+    for(let i=0;i<n;i++){            // i = 0 is the step touching the hallway
+      const t0 = fwd ? i/STEPS : L-(i+1)/STEPS, len=TS/STEPS;
+      const bx = ax ? x0+t0*TS : x0, by = ax ? y0 : y0+t0*TS;
+      const bw = ax ? len : pw,      bh = ax ? ph : len;
+      ctx.fillStyle = s.rise ? T.room : T.hall; ctx.fillRect(bx,by,bw,bh);
+      if(!s.rise){ ctx.globalAlpha=0.03+0.025*i; ctx.fillStyle=INK; ctx.fillRect(bx,by,bw,bh); ctx.globalAlpha=1; }
+    }
+    for(let k=0;k<=n;k++){
+      const t=k/STEPS*TS;
+      if(ax) line(x0+t,y0,x0+t,y0+ph,1.2); else line(x0,y0+t,x0+pw,y0+t,1.2);
+    }
+    const dx=ax?(fwd?1:-1):0, dy=ax?0:(fwd?1:-1), px=-dy, py=dx;
+    const cx=x0+pw/2, cy=y0+ph/2, a=0.3*TS;
+    ctx.beginPath();
+    ctx.moveTo(cx+dx*a, cy+dy*a);
+    ctx.lineTo(cx-dx*a*0.8+px*a*0.7, cy-dy*a*0.8+py*a*0.7);
+    ctx.lineTo(cx-dx*a*0.8-px*a*0.7, cy-dy*a*0.8-py*a*0.7);
+    ctx.closePath();
+    ctx.fillStyle = s.rise ? INK : T.bg; ctx.fill();
+    ctx.strokeStyle=INK; ctx.lineWidth=1.6; ctx.stroke();
+  }
+
+  // walls: one line per cell edge that is rock or a closed boundary (each edge drawn once)
+  for(let y=0;y<N;y++) for(let x=0;x<N;x++){
+    const i=y*N+x; if(owner[i]===-2) continue;
+    const nN=own(x,y-1), nW=own(x-1,y);
+    if(nN===-2 || !isOpen(i,i-N)) line(X(x),Y(y),X(x+1),Y(y),WALL);
+    if(nW===-2 || !isOpen(i,i-1)) line(X(x),Y(y),X(x),Y(y+1),WALL);
+    if(own(x,y+1)===-2) line(X(x),Y(y+1),X(x+1),Y(y+1),WALL);
+    if(own(x+1,y)===-2) line(X(x+1),Y(y),X(x+1),Y(y+1),WALL);
+  }
+
+  // doors: wall stubs either side of the gap, then the door symbol (same style per door as the isometric view)
+  const drawDoor=(cx,cy,vert,style)=>{
+    ctx.save(); ctx.translate(cx,cy); if(vert) ctx.rotate(Math.PI/2);
+    const hw=0.3*TS, ht=0.1*TS;
+    ctx.lineWidth=2; ctx.strokeStyle=INK; ctx.fillStyle=T.door;
+    if(style==='open'){
+      line(-hw,-ht*1.4,-hw,ht*1.4,WALL); line(hw,-ht*1.4,hw,ht*1.4,WALL);
+    } else if(style==='ajar'){
+      line(-hw,-ht*1.4,-hw,ht*1.4,WALL); line(hw,-ht*1.4,hw,ht*1.4,WALL);
+      ctx.save(); ctx.translate(-hw,0); ctx.rotate(-0.6);
+      ctx.beginPath(); ctx.rect(0,-0.04*TS,0.55*TS,0.08*TS); ctx.fill(); ctx.stroke(); ctx.restore();
+    } else {
+      ctx.beginPath(); ctx.rect(-hw,-ht,2*hw,2*ht); ctx.fill(); ctx.stroke();
+      if(style==='arch'){ ctx.beginPath(); ctx.arc(0,0,0.2*TS,Math.PI,2*Math.PI); ctx.lineWidth=1.2; ctx.stroke(); }
+      else if(style==='plank'){ for(const t of [-0.15,0,0.15]) line(t*TS,-ht,t*TS,ht,0.9); }
+      else if(style==='portcullis'){ for(const t of [-0.24,-0.12,0,0.12,0.24]) line(t*TS,-ht,t*TS,ht,1); line(-hw,0,hw,0,1.2); }
+      if(style==='standard'||style==='plank'||style==='arch') dot(0.2*TS,0,1.8);
+    }
+    ctx.restore();
+  };
+  for(const k of doors){
+    const [a,b]=k.split(',').map(Number);
+    const bx=b%N, by=(b/N)|0;
+    if(b===a+1){ // door in the wall on the left edge of b
+      line(X(bx),Y(by),X(bx),Y(by+0.2),WALL); line(X(bx),Y(by+0.8),X(bx),Y(by+1),WALL);
+      drawDoor(X(bx),Y(by+0.5),true,doorStyle(bx+','+by+','+bx+','+(by+1)));
+    } else {     // door in the wall on the top edge of b
+      line(X(bx),Y(by),X(bx+0.2),Y(by),WALL); line(X(bx+0.8),Y(by),X(bx+1),Y(by),WALL);
+      drawDoor(X(bx+0.5),Y(by),false,doorStyle(bx+','+by+','+(bx+1)+','+by));
+    }
+  }
+
+  // décor: pillars are crossed squares, the fountain is nested circles
+  for(const it of (decor||[])){
+    const cx=X(it.x+0.5), cy=Y(it.y+0.5);
+    if(it.type==='pillar'){
+      const r=0.26*TS;
+      ctx.fillStyle=T.wall; ctx.fillRect(cx-r,cy-r,2*r,2*r);
+      ctx.strokeStyle=INK; ctx.lineWidth=2; ctx.strokeRect(cx-r,cy-r,2*r,2*r);
+      line(cx-r,cy-r,cx+r,cy+r,1); line(cx+r,cy-r,cx-r,cy+r,1);
+    } else {
+      ctx.beginPath(); ctx.arc(cx,cy,0.34*TS,0,Math.PI*2); ctx.fillStyle=T.wall; ctx.fill(); ctx.strokeStyle=INK; ctx.lineWidth=2; ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx,cy,0.22*TS,0,Math.PI*2); ctx.fillStyle=T.badge; ctx.fill(); ctx.lineWidth=1; ctx.stroke();
+      dot(cx,cy,0.06*TS);
+    }
+  }
+
+  // room numbers sit in each room's top-left corner so they never cover the fountain or pillars
+  ctx.font='bold 15px system-ui, sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  for(const r of d.rooms){
+    const sx=X(r.x+0.6), sy=Y(r.y+0.6);
+    ctx.beginPath(); ctx.arc(sx,sy,12,0,Math.PI*2);
+    ctx.fillStyle=T.badge; ctx.fill(); ctx.strokeStyle=INK; ctx.lineWidth=1.6; ctx.stroke();
+    ctx.fillStyle=INK; ctx.fillText(String(r.id+1),sx,sy+0.5);
+  }
+}
+
 // ---- UI ----
 
 let current=null;
+let mode='iso'; // 'iso' (isometric) or 'top' (plan view)
 
 /*
  * build()
@@ -984,13 +1152,12 @@ let current=null;
  */
 function build(){
   const seed=$('seed').value||'dungeon';
-  current=generate(seed,+$('size').value,+$('rooms').value,+$('round').value);
+  current=generate(seed,MAP_N,+$('rooms').value,+$('rmin').value,+$('rmax').value);
   draw();
-  const rounded = current.rooms.filter(r=>r.R>0).length;
   const fountains = current.decor.filter(d=>d.type==='fountain').length;
   const pillars   = current.decor.filter(d=>d.type==='pillar').length;
   const extras = `${fountains?', fountain':''}${pillars?`, ${pillars} pillar${pillars===1?'':'s'}`:''}`;
-  $('status').textContent=`${current.rooms.length} rooms (${rounded} rounded)${extras}, ${current.loops} loop${current.loops===1?'':'s'}, seed "${seed}"`;
+  $('status').textContent=`${current.rooms.length} rooms${extras}, ${current.loops} loop${current.loops===1?'':'s'}, seed "${seed}"`;
 }
 
 /*
@@ -998,7 +1165,22 @@ function build(){
  * Re-renders the current dungeon with the current wall-height and export
  * scale. Cheap; does not regenerate.
  */
-function draw(){ if(current) render(current,+$('wall').value,+$('scale').value); }
+function draw(){ if(current) (mode==='top'?renderTop:render)(current,+$('wall').value,+$('scale').value); }
+
+/*
+ * setMode(m)
+ * Switches between isometric and top-down, updates the toggle buttons, and
+ * disables the wall-height slider (walls have no height in plan view).
+ */
+function setMode(m){
+  mode=m;
+  for(const [id,k] of [['viewIso','iso'],['viewTop','top']]){
+    $(id).classList.toggle('primary', mode===k);
+    $(id).classList.toggle('ghost', mode!==k);
+  }
+  $('wall').disabled = mode==='top';
+  draw();
+}
 
 /*
  * randSeed()
@@ -1021,14 +1203,19 @@ function paintRanges(){
 // ---- wiring ----
 $('seed').value=randSeed();
 $('rand').onclick=()=>{$('seed').value=randSeed();build()};
-$('seed').oninput=build; $('size').onchange=build; $('rooms').oninput=build; $('round').onchange=build;
+$('seed').oninput=build; $('rooms').oninput=build;
+// keep smallest <= largest: moving one past the other drags the other along
+$('rmin').onchange=()=>{ if(+$('rmin').value>+$('rmax').value) $('rmax').value=$('rmin').value; build(); };
+$('rmax').onchange=()=>{ if(+$('rmax').value<+$('rmin').value) $('rmin').value=$('rmax').value; build(); };
 $('wall').oninput=draw; $('scale').onchange=draw;
 $('dark').onclick=()=>{dark=!dark;draw()};
+$('viewIso').onclick=()=>setMode('iso');
+$('viewTop').onclick=()=>setMode('top');
 $('export').onclick=()=>{
   $('c').toBlob(b=>{
     const a=document.createElement('a');
     a.href=URL.createObjectURL(b);
-    a.download=`dungeon-${$('seed').value||'dungeon'}${dark?'-dark':''}.png`;
+    a.download=`dungeon-${$('seed').value||'dungeon'}${mode==='top'?'-top':''}${dark?'-dark':''}.png`;
     a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
   },'image/png');
 };
