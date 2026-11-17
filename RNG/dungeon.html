@@ -1,0 +1,1050 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Isometric Dungeon Generator</title>
+<style>
+  :root{
+    --bg:#14161a; --panel:#1c1f25; --panel-2:#23272f; --line:#2e333c;
+    --ink:#e8eaee; --muted:#9aa1ad; --accent:#e0a54a; --accent-2:#f0c070;
+    --field:#12141a; --shadow:0 10px 30px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    font:14px/1.4 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    color:var(--ink);
+    background:
+      radial-gradient(1200px 600px at 80% -10%, #1d222b 0%, transparent 60%),
+      radial-gradient(900px 500px at 0% 110%, #1a1d23 0%, transparent 55%),
+      var(--bg);
+    display:flex; flex-direction:column;
+  }
+  header{
+    display:flex; flex-wrap:wrap; align-items:flex-end; gap:14px 18px;
+    padding:14px 18px;
+    background:linear-gradient(180deg, #1b1e24, #171a1f);
+    border-bottom:1px solid var(--line);
+    box-shadow:0 1px 0 rgba(255,255,255,.02) inset, var(--shadow);
+    position:sticky; top:0; z-index:10;
+    backdrop-filter:blur(6px);
+  }
+  header .brand{
+    display:flex; align-items:center; gap:10px; margin-right:6px;
+    padding-right:18px; border-right:1px solid var(--line);
+    font-weight:650; letter-spacing:.2px;
+  }
+  header .brand .dot{
+    width:12px; height:12px; border-radius:3px; transform:rotate(45deg);
+    background:linear-gradient(135deg,var(--accent),var(--accent-2));
+    box-shadow:0 0 0 3px rgba(224,165,74,.15);
+  }
+  header .brand small{color:var(--muted); font-weight:500; font-size:11px; letter-spacing:.4px; text-transform:uppercase}
+  .group{display:flex; flex-direction:column; gap:5px}
+  .group > span{font-size:10.5px; letter-spacing:.6px; text-transform:uppercase; color:var(--muted); font-weight:600}
+  label{display:flex; flex-direction:column; gap:5px}
+  input[type=text], select{
+    appearance:none; -webkit-appearance:none;
+    font:inherit; color:var(--ink);
+    padding:8px 11px;
+    background:var(--field);
+    border:1px solid var(--line);
+    border-radius:8px;
+    outline:none;
+    transition:border-color .15s, box-shadow .15s, background .15s;
+    min-width:0;
+  }
+  input[type=text]{width:130px; font-variant-numeric:tabular-nums; letter-spacing:.3px}
+  select{
+    padding-right:30px;
+    background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+    background-position:calc(100% - 16px) 50%, calc(100% - 11px) 50%;
+    background-size:5px 5px,5px 5px;
+    background-repeat:no-repeat;
+    cursor:pointer;
+  }
+  input[type=text]:hover, select:hover{border-color:#3a404b}
+  input[type=text]:focus, select:focus{border-color:var(--accent); box-shadow:0 0 0 3px rgba(224,165,74,.16); background:#161922}
+  input[type=range]{
+    -webkit-appearance:none; appearance:none;
+    width:130px; height:22px; background:transparent; cursor:pointer;
+    --fill:50%;
+  }
+  input[type=range]::-webkit-slider-runnable-track{
+    height:6px; border-radius:99px;
+    background:linear-gradient(90deg,var(--accent) var(--fill), #2a2e37 var(--fill));
+    border:1px solid var(--line);
+  }
+  input[type=range]::-moz-range-track{height:6px; border-radius:99px; background:#2a2e37; border:1px solid var(--line)}
+  input[type=range]::-moz-range-progress{height:6px; border-radius:99px; background:var(--accent)}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; appearance:none;
+    width:16px; height:16px; margin-top:-6px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #fff, #cfd3da 60%, #9aa1ad);
+    border:2px solid var(--accent);
+    box-shadow:0 2px 6px rgba(0,0,0,.5);
+    transition:transform .1s;
+  }
+  input[type=range]:active::-webkit-slider-thumb{transform:scale(1.15)}
+  input[type=range]::-moz-range-thumb{
+    width:14px; height:14px; border-radius:50%;
+    background:#dfe2e7; border:2px solid var(--accent); box-shadow:0 2px 6px rgba(0,0,0,.5);
+  }
+  button{
+    font:inherit; font-weight:600; color:var(--ink); cursor:pointer;
+    padding:8px 14px; border-radius:8px;
+    border:1px solid var(--line);
+    background:linear-gradient(180deg,#262b34,#1e222a);
+    box-shadow:0 1px 0 rgba(255,255,255,.04) inset, 0 2px 6px rgba(0,0,0,.35);
+    transition:background .15s, border-color .15s, transform .05s, box-shadow .15s;
+    white-space:nowrap;
+  }
+  button:hover{border-color:#3d4450; background:linear-gradient(180deg,#2b313b,#222732)}
+  button:active{transform:translateY(1px)}
+  button.primary{
+    color:#1b1405;
+    background:linear-gradient(180deg,var(--accent-2),var(--accent));
+    border-color:#b8832f;
+    box-shadow:0 1px 0 rgba(255,255,255,.35) inset, 0 4px 14px rgba(224,165,74,.28);
+  }
+  button.primary:hover{filter:brightness(1.05)}
+  button.ghost{background:transparent; box-shadow:none; color:var(--muted)}
+  button.ghost:hover{color:var(--ink); border-color:#3d4450; background:rgba(255,255,255,.03)}
+  main{
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:26px 18px 8px; gap:14px; min-height:0;
+  }
+  .stage{
+    position:relative;
+    padding:16px;
+    border-radius:16px;
+    background:radial-gradient(120% 120% at 50% 0%, #1f232b, #14161a 70%);
+    border:1px solid var(--line);
+    box-shadow:var(--shadow), 0 0 0 1px rgba(255,255,255,.02) inset;
+    max-width:100%;
+  }
+  .stage::before{
+    content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+    box-shadow:0 0 60px rgba(0,0,0,.6) inset;
+    mix-blend-mode:multiply;
+  }
+  canvas{
+    display:block; max-width:100%; height:auto; border-radius:8px;
+    background:#fbfaf6;
+    box-shadow:0 8px 30px rgba(0,0,0,.55);
+  }
+  #status{
+    align-self:center;
+    display:inline-flex; align-items:center; gap:10px;
+    margin:0; padding:8px 16px;
+    font-size:12.5px; color:var(--muted);
+    background:rgba(255,255,255,.03);
+    border:1px solid var(--line); border-radius:99px;
+    font-variant-numeric:tabular-nums; letter-spacing:.2px;
+  }
+  #status::before{
+    content:""; width:7px; height:7px; border-radius:50%;
+    background:var(--accent); box-shadow:0 0 8px var(--accent);
+    flex:none;
+  }
+  #status b{color:var(--ink); font-weight:600}
+  @media (max-width:720px){
+    header{padding:12px}
+    header .brand{border-right:0; padding-right:0; margin-right:0; width:100%}
+    input[type=text], select, input[type=range]{width:100%}
+    .group, label{flex:1 1 140px}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <span class="dot"></span>
+    <div>Isometric Dungeon<br><small>Generator</small></div>
+  </div>
+  <div class="group">
+    <span>Seed</span>
+    <div style="display:flex;gap:8px">
+      <input id="seed" type="text" size="12" spellcheck="false">
+      <button id="rand" class="ghost" title="New seed">↻</button>
+    </div>
+  </div>
+  <label class="group">
+    <span>Map size</span>
+    <select id="size">
+      <option value="32">Small</option>
+      <option value="44" selected>Medium</option>
+      <option value="60">Large</option>
+    </select>
+  </label>
+  <label class="group">
+    <span>Target rooms</span>
+    <input id="rooms" type="range" min="4" max="30" value="12">
+  </label>
+  <label class="group">
+    <span>Round corners</span>
+    <select id="round">
+      <option value="0">Off</option>
+      <option value="2">2</option>
+      <option value="3" selected>3</option>
+      <option value="4">4</option>
+      <option value="5">5</option>
+    </select>
+  </label>
+  <label class="group">
+    <span>Wall height</span>
+    <input id="wall" type="range" min="0.2" max="1.4" step="0.1" value="1">
+  </label>
+  <label class="group">
+    <span>Export scale</span>
+    <select id="scale">
+      <option value="1">1x</option>
+      <option value="2" selected>2x</option>
+      <option value="3">3x</option>
+    </select>
+  </label>
+  <div class="group">
+    <span>View</span>
+    <div style="display:flex;gap:8px">
+      <button id="dark" class="ghost">Dark</button>
+      <button id="export" class="primary">Export PNG</button>
+    </div>
+  </div>
+</header>
+<main>
+  <div class="stage"><canvas id="c"></canvas></div>
+  <p id="status"></p>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+
+// ---- seeded RNG ----
+
+/*
+ * hash(str)
+ * 32-bit FNV-ish string hash (with extra avalanche mixing).
+ * Purpose: turn a human-readable seed string into a stable integer, so the
+ * same seed always produces the same dungeon.
+ * Returns: unsigned 32-bit integer.
+ */
+function hash(str){
+  let h=1779033703^str.length;
+  for(let i=0;i<str.length;i++){h=Math.imul(h^str.charCodeAt(i),3432918353);h=h<<13|h>>>19}
+  h=Math.imul(h^h>>>16,2246822507);h=Math.imul(h^h>>>13,3266489909);
+  return(h^h>>>16)>>>0;
+}
+
+/*
+ * mulberry(a)
+ * Mulberry32 PRNG factory. Seeds an internal state from `a` and returns a
+ * function that yields floats in [0,1). Deterministic for a given seed.
+ */
+function mulberry(a){
+  return function(){
+    a|=0; a=a+0x6D2B79F5|0;
+    let t=Math.imul(a^a>>>15,1|a);
+    t=t+Math.imul(t^t>>>7,61|t)^t;
+    return((t^t>>>14)>>>0)/4294967296;
+  };
+}
+
+// ---- constants / helpers ----
+
+/*
+ * DIRS
+ * Direction lookup for the four cardinal attach sides.
+ *  dx,dy  : unit vector pointing OUTWARD from the edge (into the hallway).
+ *  opp    : the opposite side name.
+ * Used by canPlace() to skip the strip that touches the hallway, and anywhere
+ * that needs to reason about "the cell just outside this edge".
+ */
+const DIRS={
+  N:{dx:0,dy:-1,opp:'S'}, S:{dx:0,dy:1,opp:'N'},
+  E:{dx:1,dy:0,opp:'W'},  W:{dx:-1,dy:0,opp:'E'}
+};
+
+/*
+ * inRoom(rx,ry,rw,rh,R,cx,cy)
+ * Cell-level rounded-rectangle test. A cell counts as inside if its center
+ * is not in the "cut corner" region beyond an arc of radius R from each
+ * inner corner point. R=0 means an ordinary square rectangle.
+ * Params: room bbox (rx,ry,rw,rh), corner radius R, cell (cx,cy).
+ * Returns: true if the cell is part of the room footprint.
+ */
+function inRoom(rx,ry,rw,rh,R,cx,cy){
+  if(R<=0) return true;
+  const px=cx+0.5, py=cy+0.5, r2=R*R;
+  if(px<rx+R && py<ry+R){ const dx=px-(rx+R),dy=py-(ry+R); if(dx*dx+dy*dy>r2) return false; }
+  if(px>rx+rw-R && py<ry+R){ const dx=px-(rx+rw-R),dy=py-(ry+R); if(dx*dx+dy*dy>r2) return false; }
+  if(px<rx+R && py>ry+rh-R){ const dx=px-(rx+R),dy=py-(ry+rh-R); if(dx*dx+dy*dy>r2) return false; }
+  if(px>rx+rw-R && py>ry+rh-R){ const dx=px-(rx+rw-R),dy=py-(ry+rh-R); if(dx*dx+dy*dy>r2) return false; }
+  return true;
+}
+
+/*
+ * forEdgeCells(x,y,w,h,attach,fn)
+ * Iterates every cell along one edge of a rect and calls fn with:
+ *   fn(roomX, roomY, hallX, hallY, t)
+ * where (roomX,roomY) is the outermost room cell on that edge,
+ * (hallX,hallY) is the cell just outside it, and t is the running index.
+ * Used to gather door candidates without four copy-pasted loops.
+ */
+function forEdgeCells(x,y,w,h,attach,fn){
+  if(attach==='S') for(let xx=x;xx<x+w;xx++) fn(xx, y+h-1, xx, y+h, xx);
+  if(attach==='N') for(let xx=x;xx<x+w;xx++) fn(xx, y,     xx, y-1, xx);
+  if(attach==='E') for(let yy=y;yy<y+h;yy++) fn(x+w-1, yy, x+w, yy, yy);
+  if(attach==='W') for(let yy=y;yy<y+h;yy++) fn(x, yy,     x-1, yy, yy);
+}
+
+// ---- generation ----
+
+/*
+ * generate(seed, N, count, roundMax)
+ * The whole procedural pipeline. Deterministic for a given seed.
+ * Params:
+ *   seed     - any string; hashed into the PRNG state.
+ *   N        - grid is N×N cells.
+ *   count    - target number of rooms.
+ *   roundMax - maximum rounded-corner radius (0 disables rounding).
+ * Returns an object:
+ *   { N, owner, rooms, doors, stairs, loops, decor }
+ *   owner  : Int16Array, -2 empty, -1 hallway, >=0 room id.
+ *   rooms  : array of {id,x,y,w,h,R,seg}.
+ *   doors  : Set of "a,b" cell-index pairs (a<b).
+ *   stairs : array of {x,y,w,h,dir,rise} stair blocks.
+ *   loops  : number of shortcut loops successfully carved.
+ *   decor  : array of {type:'fountain'|'pillar', x, y}.
+ */
+function generate(seed, N, count, roundMax){
+  const rng = mulberry(hash(seed));
+
+  /*
+   * ri(a,b)
+   * Inclusive random integer in [a,b] using the seeded RNG.
+   */
+  const ri = (a,b) => a + Math.floor(rng()*(b-a+1));
+
+  /*
+   * shuffle(arr)
+   * In-place Fisher-Yates shuffle driven by the seeded RNG. Returns arr.
+   */
+  const shuffle = arr => { for(let i=arr.length-1;i>0;i--){ const j=ri(0,i); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; };
+
+  const owner = new Int16Array(N*N).fill(-2);
+  const rooms = [], segs = [], doors = new Set();
+  const at = (x,y) => y*N+x;
+  const key = (a,b) => a<b ? a+','+b : b+','+a;
+  const segOf = new Int16Array(N*N).fill(-1);
+  const stair = new Uint8Array(N*N);
+
+  // room size by hallway depth: [min along hall, max along hall, min depth, max depth]
+  const SZ = [[5,8,4,7],[4,6,3,5],[3,4,3,4],[3,3,3,3]];
+  /*
+   * sz(depth)
+   * Clamps hallway depth to 0..3 and returns the size range for rooms on it.
+   */
+  const sz = d => SZ[Math.min(d,3)];
+
+  /*
+   * pickR(w,h)
+   * Chooses a corner radius for a room of bbox w×h. Returns 0 (square) when
+   * rounding is off, the room is too small, or by a 35% "stay square" chance.
+   * Otherwise returns 2..min(roundMax, cap) where cap leaves a straight cell
+   * on each edge so doors have somewhere to go.
+   */
+  function pickR(w,h){
+    if(roundMax<2) return 0;
+    const cap=Math.floor((Math.min(w,h)-1)/2);
+    const hi=Math.min(roundMax,cap);
+    if(hi<2) return 0;
+    if(rng()<0.35) return 0;
+    return ri(2,hi);
+  }
+
+  /*
+   * addSeg(x,y,w,h,depth,parent,dir)
+   * Stamps a rectangular hallway segment into owner/segOf, pushes it onto segs,
+   * and returns it. depth 0 = main hall; parent is the segment it branched off.
+   */
+  function addSeg(x,y,w,h,depth,parent,dir){
+    for(let yy=y;yy<y+h;yy++) for(let xx=x;xx<x+w;xx++) { owner[at(xx,yy)] = -1; segOf[at(xx,yy)] = segs.length; }
+    const s = {id:segs.length,x,y,w,h,horiz:w>h,depth,parent,dir,br:[]};
+    segs.push(s); return s;
+  }
+
+  /*
+   * canPlace(x,y,w,h,attach)
+   * Checks that the rect plus a one-cell margin is empty, EXCEPT the strip
+   * just outside the attach edge (that's where it meets a hallway).
+   * Returns true if the rect can be placed with that attach side.
+   */
+  function canPlace(x,y,w,h,attach){
+    if(x<1||y<1||x+w>N-1||y+h>N-1) return false;
+    const d=DIRS[attach];
+    for(let yy=y-1; yy<=y+h; yy++) for(let xx=x-1; xx<=x+w; xx++){
+      if(d.dy===-1 && yy===y-1) continue;
+      if(d.dy===1  && yy===y+h) continue;
+      if(d.dx===-1 && xx===x-1) continue;
+      if(d.dx===1  && xx===x+w) continue;
+      if(owner[at(xx,yy)]!==-2) return false;
+    }
+    return true;
+  }
+
+  /*
+   * okc(c,seg)
+   * May a door open onto cell c from segment seg? Allowed only if c is a
+   * non-stair hallway cell that belongs to seg itself, one of seg's
+   * ancestors, or the main hall (so a door can never lead into a branch
+   * that might later be pruned).
+   */
+  function okc(c,seg){
+    if(owner[c]!==-1 || stair[c]) return false;
+    const t=segOf[c];
+    if(segs[t].depth===0) return true;
+    for(let q=seg.id; q>=0; q=segs[q].parent) if(q===t) return true;
+    return false;
+  }
+
+  /*
+   * tryRoom(x,y,w,h,attach,seg)
+   * Attempts to place a room against hallway `seg` on side `attach`.
+   * Picks a corner radius, gathers door candidates along the straight part
+   * of the attach edge, writes the rounded footprint into owner, and adds
+   * one door (two for main-hall rooms sometimes).
+   * Returns true on success, false if it can't be placed or has no door.
+   */
+  function tryRoom(x,y,w,h,attach,seg){
+    if(!canPlace(x,y,w,h,attach)) return false;
+    const R = pickR(w,h);
+    const inside = (cx,cy) => inRoom(x,y,w,h,R,cx,cy);
+    const cand=[];
+    forEdgeCells(x,y,w,h,attach,(rx,ry,hx,hy,t)=>{
+      if(inside(rx,ry) && okc(at(hx,hy),seg)) cand.push({t,a:at(rx,ry),b:at(hx,hy)});
+    });
+    if(!cand.length) return false;
+    const id=rooms.length;
+    rooms.push({id,x,y,w,h,R,seg:seg.id});
+    for(let yy=y;yy<y+h;yy++) for(let xx=x;xx<x+w;xx++) if(inside(xx,yy)) owner[at(xx,yy)]=id;
+    const f=cand[ri(0,cand.length-1)];
+    doors.add(key(f.a,f.b));
+    if(seg.depth===0){
+      const others=cand.filter(c=>Math.abs(c.t-f.t)>=2);
+      if(others.length && rng()<0.5){ const g=others[ri(0,others.length-1)]; doors.add(key(g.a,g.b)); }
+    }
+    return true;
+  }
+
+  // ---- 1. main hall ----
+  const horiz = rng()<0.5, W = ri(2,3);
+  /*
+   * rectUV(u,v,du,dv)
+   * Converts "along the hall" (u) and "across" (v) coordinates into x,y,w,h,
+   * flipping axes when the hall is vertical.
+   */
+  const rectUV = (u,v,du,dv) => horiz ? {x:u,y:v,w:du,h:dv} : {x:v,y:u,w:dv,h:du};
+  /*
+   * clampV(v)
+   * Keeps the across-hall coordinate far enough from the map border.
+   */
+  const clampV = v => Math.max(9, Math.min(N-9-W, v));
+
+  const vA = clampV(ri(Math.floor(N*0.28), Math.floor(N*0.42)));
+  const vB = clampV(vA + (rng()<0.5?-1:1)*ri(7,11));
+  const jog = rng()<0.65 && Math.abs(vB-vA)>=5;
+  const uJ = ri(Math.floor(N*0.35), Math.floor(N*0.62));
+
+  /*
+   * addUV(u,v,du,dv)
+   * Adds a main-hall segment given along/across coordinates.
+   */
+  const addUV = (u,v,du,dv) => { const r=rectUV(u,v,du,dv); addSeg(r.x,r.y,r.w,r.h,0,-1,null); };
+
+  if(jog){
+    addUV(2, vA, uJ+W-2, W);
+    addUV(uJ, Math.min(vA,vB), W, Math.abs(vB-vA)+W);
+    addUV(uJ, vB, N-2-uJ, W);
+  } else addUV(2, vA, N-4, W);
+  const main = segs.slice();
+
+  // stairs: left flight rises outward, right flight descends (flush at floor)
+  const stairs = [];
+  const vEnd = jog ? vB : vA;
+  // dir = direction pointing AWAY from the hallway
+  const leftDir  = horiz ? '-x' : '-y';
+  const rightDir = horiz ? '+x' : '+y';
+  for(const [r,dir,rise] of [
+    [rectUV(2,vA,2,W), leftDir,  true ],
+    [rectUV(N-4,vEnd,2,W), rightDir, false]
+  ]){
+    stairs.push({...r,dir,rise});
+    for(let yy=r.y;yy<r.y+r.h;yy++) for(let xx=r.x;xx<r.x+r.w;xx++) stair[at(xx,yy)]=1;
+  }
+
+  // ---- 2. offshoot hallways ----
+
+  /*
+   * tryBranch(p, minGap)
+   * Tries to grow a child hallway off parent segment p. Avoids stairs and
+   * keeps minGap cells between sibling branches on the same side.
+   * Returns true if the branch was placed.
+   */
+  function tryBranch(p, minGap){
+    const d=p.depth+1;
+    const ow = d===1 && rng()<0.25 ? 2 : 1;
+    const L = d===1 ? ri(6,11) : d===2 ? ri(4,8) : ri(3,5);
+    const side = ri(0,1);
+    const lo=(p.horiz?p.x:p.y)+1, hi=(p.horiz?p.x+p.w:p.y+p.h)-ow-1;
+    if(hi<lo) return false;
+    const pos=ri(lo,hi);
+    if(p.br.some(b=>b.side===side && Math.abs(b.pos-pos)<minGap)) return false;
+    for(let k=pos-1;k<=pos+ow;k++){
+      const c = p.horiz ? at(k, side===0?p.y:p.y+p.h-1) : at(side===0?p.x:p.x+p.w-1, k);
+      if(k>=0 && k<N && stair[c]) return false;
+    }
+    let r;
+    if(p.horiz) r = side===0 ? {x:pos,y:p.y-L,w:ow,h:L,at:'S',dir:'N'} : {x:pos,y:p.y+p.h,w:ow,h:L,at:'N',dir:'S'};
+    else        r = side===0 ? {x:p.x-L,y:pos,w:L,h:ow,at:'E',dir:'W'} : {x:p.x+p.w,y:pos,w:L,h:ow,at:'W',dir:'E'};
+    if(!canPlace(r.x,r.y,r.w,r.h,r.at)) return false;
+    p.br.push({side,pos});
+    addSeg(r.x,r.y,r.w,r.h,d,p.id,r.dir);
+    return true;
+  }
+
+  /*
+   * lvl(d)
+   * Returns the segments at hallway depth d.
+   */
+  const lvl = d => segs.filter(s=>s.depth===d);
+
+  const n1 = Math.max(2, Math.min(7, Math.round(count/3)));
+  const totalLen = main.reduce((a,s)=>a+Math.max(s.w,s.h),0);
+  /*
+   * pick()
+   * Picks a random main-hall segment, weighted by its length.
+   */
+  const pick = () => { let t=rng()*totalLen; for(const s of main){ t-=Math.max(s.w,s.h); if(t<=0) return s; } return main[0]; };
+
+  for(let t=0,made=0; t<n1*12 && made<n1; t++) if(tryBranch(pick(),7)) made++;
+  const n2 = Math.max(1, Math.min(8, Math.round(count/3)));
+  let made2=0;
+  for(const p of shuffle(lvl(1))) for(let t=0,k=ri(1,2); t<8 && k>0 && made2<n2; t++) if(tryBranch(p,5)){ k--; made2++; }
+  const n3 = Math.round(count/6);
+  let made3=0;
+  for(const p of shuffle(lvl(2))){ if(made3>=n3) break; for(let t=0;t<6;t++) if(tryBranch(p,5)){ made3++; break; } }
+
+  // ---- 3. rooms ----
+
+  /*
+   * sideRooms(s, pFill, cap)
+   * Walks along hallway s and scatters rooms on both sides. pFill is the
+   * probability of trying a room at each step; cap stops once enough rooms
+   * exist. Room sizes come from sz(s.depth).
+   */
+  function sideRooms(s, pFill, cap){
+    const [lmin,lmax,dmin,dmax]=sz(s.depth);
+    const end = s.horiz ? s.x+s.w : s.y+s.h;
+    for(const side of shuffle([0,1])){
+      let cur=(s.horiz?s.x:s.y)+ri(0,2);
+      while(cur+lmin<=end && rooms.length<cap){
+        if(rng()>pFill){ cur+=ri(2,4); continue; }
+        let placed=false;
+        for(let a=0;a<4 && !placed;a++){
+          const rl=ri(lmin,lmax), rd=ri(dmin,dmax);
+          if(cur+rl>end) continue;
+          let ok;
+          if(s.horiz) ok = side===0 ? tryRoom(cur,s.y-rd,rl,rd,'S',s) : tryRoom(cur,s.y+s.h,rl,rd,'N',s);
+          else        ok = side===0 ? tryRoom(s.x-rd,cur,rd,rl,'E',s) : tryRoom(s.x+s.w,cur,rd,rl,'W',s);
+          if(ok){ placed=true; cur+=rl+1+(rng()<0.3?ri(1,2):0); }
+        }
+        if(!placed) cur+=2;
+      }
+    }
+  }
+
+  /*
+   * endCap(s)
+   * Tries to put a room at the far end of a hallway (the direction s.dir
+   * points). Up to 6 size attempts. Returns true if one was placed.
+   */
+  function endCap(s){
+    const [lmin,lmax,dmin,dmax]=sz(s.depth);
+    const cx=s.x+Math.floor(s.w/2), cy=s.y+Math.floor(s.h/2);
+    for(let a=0;a<6;a++){
+      const pw=ri(lmin,lmax), pd=ri(dmin,dmax);
+      let ok;
+      if(s.dir==='N') ok=tryRoom(cx-Math.floor(pw/2), s.y-pd, pw, pd, 'S', s);
+      else if(s.dir==='S') ok=tryRoom(cx-Math.floor(pw/2), s.y+s.h, pw, pd, 'N', s);
+      else if(s.dir==='W') ok=tryRoom(s.x-pd, cy-Math.floor(pw/2), pd, pw, 'E', s);
+      else ok=tryRoom(s.x+s.w, cy-Math.floor(pw/2), pd, pw, 'W', s);
+      if(ok) return true;
+    }
+    return false;
+  }
+
+  const mainCap = Math.max(2, Math.round(count*0.45));
+  const est = main.reduce((a,s)=>a+2*Math.max(s.w,s.h)/7,0);
+  for(const s of main) sideRooms(s, Math.min(1, mainCap/est), mainCap);
+  for(let d=1; d<=3; d++){
+    const L=shuffle(lvl(d));
+    for(const s of L) if(rooms.length<count) endCap(s);
+    for(const s of L) sideRooms(s,1,count);
+  }
+
+  // ---- 4. prune dead offshoots ----
+  for(const r of rooms){ let s=r.seg; while(s>=0 && !segs[s].used){ segs[s].used=true; s=segs[s].parent; } }
+  for(const s of segs) if(s.depth>0 && !s.used)
+    for(let yy=s.y;yy<s.y+s.h;yy++) for(let xx=s.x;xx<s.x+s.w;xx++) if(owner[at(xx,yy)]===-1) owner[at(xx,yy)]=-2;
+
+  // ---- 5. Jaquaying loops ----
+  /*
+   * grp(r)
+   * Returns the depth-1 ancestor segment of room r (or -1 for main-hall
+   * rooms). Rooms in the same group are already connected, so shortcuts
+   * between them wouldn't create a loop.
+   */
+  const grp = r => { let q=r.seg; while(segs[q].depth>1) q=segs[q].parent; return segs[q].depth===0 ? -1 : q; };
+
+  /*
+   * clear(x,y)
+   * True if the cell is in-bounds and empty (safe to carve a shortcut through).
+   */
+  const clear = (x,y) => x>=1 && y>=1 && x<N-1 && y<N-1 && owner[at(x,y)]===-2;
+
+  const cands = [];
+  for(let i=0;i<rooms.length;i++) for(let j=i+1;j<rooms.length;j++){
+    const A=rooms[i], B=rooms[j], ga=grp(A), gb=grp(B);
+    if(ga===gb) continue;
+    const [U,D]=A.y<B.y?[A,B]:[B,A];
+    const g0=U.y+U.h, g1=D.y-1, xl=Math.max(A.x,B.x), xh=Math.min(A.x+A.w,B.x+B.w)-1;
+    if(xl<=xh && g1>=g0 && g1-g0<10) cands.push({v:true,ga,gb,lo:xl,hi:xh,g0,g1});
+    const [Lf,R]=A.x<B.x?[A,B]:[B,A];
+    const h0=Lf.x+Lf.w, h1=R.x-1, yl=Math.max(A.y,B.y), yh=Math.min(A.y+A.h,B.y+B.h)-1;
+    if(yl<=yh && h1>=h0 && h1-h0<10) cands.push({v:false,ga,gb,lo:yl,hi:yh,g0:h0,g1:h1});
+  }
+  const wantLoops = Math.max(1, Math.min(6, Math.round(count/4)));
+  const linked = new Set(); let loops = 0;
+  for(const c of shuffle(cands)){
+    if(loops>=wantLoops) break;
+    const lk = Math.min(c.ga,c.gb)+':'+Math.max(c.ga,c.gb);
+    if(linked.has(lk)) continue;
+    const ps=[]; for(let q=c.lo;q<=c.hi;q++) ps.push(q);
+    for(const q of shuffle(ps)){
+      let ok=true;
+      for(let t=c.g0;t<=c.g1 && ok;t++) for(const o of [-1,0,1]) if(!(c.v?clear(q+o,t):clear(t,q+o))) ok=false;
+      if(!ok) continue;
+      for(let t=c.g0;t<=c.g1;t++) owner[c.v?at(q,t):at(t,q)]=-1;
+      if(c.v){ doors.add(key(at(q,c.g0-1),at(q,c.g0))); doors.add(key(at(q,c.g1),at(q,c.g1+1))); }
+      else   { doors.add(key(at(c.g0-1,q),at(c.g0,q))); doors.add(key(at(c.g1,q),at(c.g1+1,q))); }
+      linked.add(lk); loops++; break;
+    }
+  }
+
+  // ---- 6. number rooms ----
+  /*
+   * mid(r)
+   * Sorting key: sum of bbox center coords, so rooms are numbered in a
+   * top-left to bottom-right sweep.
+   */
+  const mid = r => r.x+r.w/2+r.y+r.h/2;
+
+  const order = rooms.map((_,i)=>i).sort((a,b)=>mid(rooms[a])-mid(rooms[b]));
+  const remap = new Int16Array(rooms.length);
+  order.forEach((old,nw)=>{ remap[old]=nw; });
+  for(let i=0;i<owner.length;i++) if(owner[i]>=0) owner[i]=remap[owner[i]];
+  const finalRooms = order.map((old,nw)=>({...rooms[old], id:nw}));
+
+  // ---- 7. décor ----
+  const decor = [];
+  const occupied = new Set();
+  /*
+   * isRoomCell(x,y)
+   * True if the cell is a room floor cell (not hall, not empty).
+   */
+  const isRoomCell = (x,y) => x>=0&&y>=0&&x<N&&y<N && owner[at(x,y)]>=0;
+
+  /*
+   * freeForDecor(x,y)
+   * True if a prop may be placed here: a room cell, not a stair, not already
+   * occupied by another prop.
+   */
+  const freeForDecor = (x,y) => isRoomCell(x,y) && !stair[at(x,y)] && !occupied.has(x+','+y);
+
+  const fountainRooms = finalRooms.filter(r => r.w>=4 && r.h>=4);
+  if(fountainRooms.length){
+    const r = fountainRooms[ri(0, fountainRooms.length-1)];
+    const fx = r.x + Math.floor(r.w/2), fy = r.y + Math.floor(r.h/2);
+    if(freeForDecor(fx,fy)){ decor.push({type:'fountain', x:fx, y:fy}); occupied.add(fx+','+fy); }
+  }
+  for(const r of finalRooms){
+    if(r.w<5 || r.h<5) continue;
+    const xs=[r.x+2, r.x+r.w-3], ys=[r.y+2, r.y+r.h-3];
+    for(const py of ys) for(const px of xs){
+      if(!freeForDecor(px,py)) continue;
+      let blocked=false;
+      for(const k of [at(px,py), at(px,py-1), at(px-1,py)]) if(stair[k]) blocked=true;
+      if(blocked) continue;
+      decor.push({type:'pillar', x:px, y:py});
+      occupied.add(px+','+py);
+    }
+  }
+
+  return {N, owner, rooms: finalRooms, doors, stairs, loops, decor};
+}
+
+// ---- rendering ----
+
+const TW=56, TH=28, ZH=40, DOOR_H=0.8;
+const LIGHT={bg:'#fbfaf6',ink:'#1a1a1a',room:'#ffffff',hall:'#efece3',grid:'#d8d4c7',ghost:'#9a978c',wall:'#e9e5d9',low:'#ffffff',door:'#ffffff',badge:'#ffffff'};
+const DARK={bg:'#000000',ink:'#ffffff',room:'#000000',hall:'#0c0c0c',grid:'#333333',ghost:'#8a8a8a',wall:'#141414',low:'#000000',door:'#000000',badge:'#000000'};
+let dark=false, T=LIGHT, INK=T.ink;
+
+const OTHER_DOOR_STYLES=['arch','plank','ajar','open','portcullis'];
+/*
+ * doorStyle(k)
+ * Maps a door key string to a style. 50% of doors are 'standard'; the
+ * other 50% are split evenly (10% each) across the remaining five styles.
+ * Deterministic, so each door keeps its look across redraws, dark mode and export.
+ */
+const doorStyle = k => {
+  const h = hash(k);
+  return (h & 1) === 0 ? 'standard' : OTHER_DOOR_STYLES[(h >>> 1) % OTHER_DOOR_STYLES.length];
+};
+
+/*
+ * render(d, wallH, scale)
+ * Draws the whole dungeon to the canvas in isometric projection.
+ * Params:
+ *   d     - the object returned by generate().
+ *   wallH - wall height in world units.
+ *   scale - integer pixel scale (1x/2x/3x) for export crispness.
+ * Side effects: resizes the canvas, sets T/INK theme colors.
+ */
+function render(d, wallH, scale){
+  const {N,owner,rooms,doors,decor} = d;
+  T = dark ? DARK : LIGHT; INK = T.ink;
+  const cv=$('c'), ctx=cv.getContext('2d');
+  /*
+   * proj(x,y,z)
+   * Isometric projection: world cell coords + height -> screen coords
+   * (before offsetting to the canvas origin).
+   */
+  const proj=(x,y,z)=>[(x-y)*TW/2,(x+y)*TH/2 - z*ZH];
+
+  // fit the canvas to the projected extents of all non-empty cells
+  let minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9;
+  const top=Math.max(wallH,1);
+  for(let y=0;y<N;y++) for(let x=0;x<N;x++){
+    if(owner[y*N+x]===-2) continue;
+    for(const [cx,cy] of [[x,y],[x+1,y],[x,y+1],[x+1,y+1]]) for(const z of [0,top]){
+      const [sx,sy]=proj(cx,cy,z);
+      minx=Math.min(minx,sx);maxx=Math.max(maxx,sx);miny=Math.min(miny,sy);maxy=Math.max(maxy,sy);
+    }
+  }
+  if(minx>maxx){minx=miny=0;maxx=maxy=10}
+  const pad=30;
+  const W=Math.ceil(maxx-minx+pad*2), H=Math.ceil(maxy-miny+pad*2);
+  cv.width=W*scale; cv.height=H*scale;
+  ctx.setTransform(scale,0,0,scale,0,0);
+  ctx.fillStyle=T.bg; ctx.fillRect(0,0,W,H);
+
+  /*
+   * P(x,y,z)
+   * proj() offset so the map lands inside the canvas with padding.
+   */
+  const P=(x,y,z)=>{const [sx,sy]=proj(x,y,z);return [sx-minx+pad, sy-miny+pad]};
+  ctx.lineJoin='round'; ctx.lineCap='round';
+
+  /*
+   * quad(pts, fill, stroke, lw)
+   * Fills and/or strokes a closed polygon given 2D points.
+   */
+  const quad=(pts,fill,stroke,lw)=>{
+    ctx.beginPath(); pts.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y)); ctx.closePath();
+    if(fill){ctx.fillStyle=fill;ctx.fill()}
+    if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.stroke()}
+  };
+
+  /*
+   * line(x1,y1,x2,y2,lw)
+   * Strokes a single segment in INK at the given width.
+   */
+  const line=(x1,y1,x2,y2,lw)=>{ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.strokeStyle=INK;ctx.lineWidth=lw;ctx.stroke();};
+
+  /*
+   * own(x,y)
+   * Safe owner lookup: out-of-bounds reads return -2 (empty).
+   */
+  const own=(x,y)=>(x<0||y<0||x>=N||y>=N)?-2:owner[y*N+x];
+
+  /*
+   * isOpen(a,b)
+   * True if cells a and b are the same owner or a door connects them —
+   * i.e. there's no wall between them.
+   */
+  const isOpen=(a,b)=>{const oa=owner[a],ob=owner[b];if(oa===ob)return true;return doors.has(a<b?a+','+b:b+','+a);};
+
+  /*
+   * isoBox(x0,y0,x1,y1,z0,z1,opts)
+   * Draws one isometric box (E face, S face, top) between two heights.
+   * opts: {top, side, line, lw, topLw}. Used for stairs, pillars, fountains.
+   */
+  function isoBox(x0,y0,x1,y1,z0,z1,{top=T.room,side=T.wall,line=INK,lw=1.2,topLw=lw}={}){
+    quad([P(x1,y0,z0),P(x1,y1,z0),P(x1,y1,z1),P(x1,y0,z1)],side,line,lw);
+    quad([P(x0,y1,z0),P(x1,y1,z0),P(x1,y1,z1),P(x0,y1,z1)],side,line,lw);
+    quad([P(x0,y0,z1),P(x1,y0,z1),P(x1,y1,z1),P(x0,y1,z1)],top,line,topLw);
+  }
+
+  /*
+   * vLines(pt,t0,t1,n,z0,z1,lw)
+   * Draws n evenly spaced vertical lines on a door face between t0..t1
+   * and heights z0..z1, using pt(t,z) to project. Used for plank/portcullis.
+   */
+  const vLines=(pt,t0,t1,n,z0,z1,lw)=>{for(let k=1;k<n;k++){const t=t0+(t1-t0)*k/n;const [a,b]=pt(t,z0),[c,d2]=pt(t,z1);line(a,b,c,d2,lw);}};
+
+  /*
+   * hLines(pt,t0,t1,n,z0,z1,lw)
+   * Same as vLines but horizontal: n evenly spaced lines between heights
+   * z0..z1 across the face t0..t1.
+   */
+  const hLines=(pt,t0,t1,n,z0,z1,lw)=>{for(let k=1;k<n;k++){const z=z0+(z1-z0)*k/n;const [a,b]=pt(t0,z),[c,d2]=pt(t1,z);line(a,b,c,d2,lw);}};
+
+  // doors keyed by the later cell so we can draw them during that cell's pass
+  const doorAt=new Map();
+  for(const k of doors){
+    const [a,b]=k.split(',').map(Number);
+    const side=(b===a+1)?'W':'N';
+    if(!doorAt.has(b)) doorAt.set(b,[]);
+    doorAt.get(b).push(side);
+  }
+
+  // floors first: fill every cell, then stroke the grid so neighbouring fills can't cover it
+  const cells=[];
+  for(let y=0;y<N;y++) for(let x=0;x<N;x++) if(owner[y*N+x]!==-2) cells.push([x,y]);
+  /*
+   * floorPts(x,y)
+   * The four projected corners of a cell's floor quad.
+   */
+  const floorPts=(x,y)=>[P(x,y,0),P(x+1,y,0),P(x+1,y+1,0),P(x,y+1,0)];
+  for(const [x,y] of cells) quad(floorPts(x,y), owner[y*N+x]>=0?T.room:T.hall, null, 0);
+  for(const [x,y] of cells) quad(floorPts(x,y), null, T.grid, 0.7);
+
+  const STEPS=3, SH=0.07, stairAt=new Map();
+  for(const s of (d.stairs||[])) for(let yy=s.y;yy<s.y+s.h;yy++) for(let xx=s.x;xx<s.x+s.w;xx++) stairAt.set(yy*N+xx,s);
+
+  const decorAt=new Map();
+  for(const it of (decor||[])) decorAt.set(it.y*N+it.x, it);
+
+  /*
+   * drawSteps(s,x,y)
+   * Draws one cell of a staircase as STEPS mini-boxes. `rise` flights step
+   * above z=0; descending flights step below z=0 with their top step flush
+   * with the floor. Side faces are clamped between min(0,z) and max(0,z).
+   */
+  function drawSteps(s,x,y){
+    const ax=s.dir[1]==='x', fwd=s.dir[0]==='+';
+    const c = ax ? (fwd ? x-s.x : s.x+s.w-1-x) : (fwd ? y-s.y : s.y+s.h-1-y);
+    const boxes=[];
+    for(let i=0;i<STEPS;i++){
+      const t0 = fwd ? i/STEPS : 1-(i+1)/STEPS, t1 = t0+1/STEPS;
+      const hi = c*STEPS+i; // 0 = step touching the hallway
+      boxes.push(ax ? {x0:x+t0,x1:x+t1,y0:y,y1:y+1,hi} : {x0:x,x1:x+1,y0:y+t0,y1:y+t1,hi});
+    }
+    boxes.sort((a,b)=>(a.x0+a.y0)-(b.x0+b.y0));
+    for(const b of boxes){
+      if(s.rise){
+        // up: shortest step meets the hallway floor, steps grow taller away from it
+        isoBox(b.x0,b.y0,b.x1,b.y1,0,(b.hi+1)*SH,{top:T.room,side:T.wall,line:INK,lw:1.2});
+      } else {
+        // down: tallest step's top is flush with the hallway floor, tops drop away from it
+        const zt=-b.hi*SH, zb=zt-SH;
+        if(ax && y===s.y) quad([P(b.x0,b.y0,zt),P(b.x1,b.y0,zt),P(b.x1,b.y0,0),P(b.x0,b.y0,0)],T.wall,INK,1.2);
+        if(!ax && x===s.x) quad([P(b.x0,b.y0,zt),P(b.x0,b.y1,zt),P(b.x0,b.y1,0),P(b.x0,b.y0,0)],T.wall,INK,1.2);
+        quad([P(b.x0,b.y0,zt),P(b.x1,b.y0,zt),P(b.x1,b.y1,zt),P(b.x0,b.y1,zt)],T.room,INK,1.2);
+        if(ax) quad([P(b.x1,b.y0,zb),P(b.x1,b.y1,zb),P(b.x1,b.y1,zt),P(b.x1,b.y0,zt)],T.wall,INK,1.2);
+        else   quad([P(b.x0,b.y1,zb),P(b.x1,b.y1,zb),P(b.x1,b.y1,zt),P(b.x0,b.y1,zt)],T.wall,INK,1.2);
+      }
+    }
+  }
+
+  /*
+   * drawDecor(it,x,y)
+   * Draws a pillar or fountain centered in the given cell. Pillars are a
+   * column + base slab; fountains are a basin rim, water surface, and spout.
+   */
+  function drawDecor(it,x,y){
+    const cx0=x+0.5, cy0=y+0.5;
+    if(it.type==='pillar'){
+      const r=0.26, h=wallH;
+      isoBox(cx0-r,cy0-r,cx0+r,cy0+r,0,h,{top:T.room,side:T.wall,line:INK,lw:1.1,topLw:1.2});
+      quad([P(cx0-r-0.04,cy0-r-0.04,0),P(cx0+r+0.04,cy0-r-0.04,0),P(cx0+r+0.04,cy0+r+0.04,0),P(cx0-r-0.04,cy0+r+0.04,0)],T.room,INK,1.1);
+    } else { // fountain
+      const r=0.34, zRim=0.12, zWater=0.07, wr=0.26;
+      isoBox(cx0-r,cy0-r,cx0+r,cy0+r,0,zRim,{top:T.wall,side:T.wall,line:INK,lw:1.1});
+      quad([P(cx0-wr,cy0-wr,zWater),P(cx0+wr,cy0-wr,zWater),P(cx0+wr,cy0+wr,zWater),P(cx0-wr,cy0+wr,zWater)],T.badge,INK,0.8);
+      isoBox(cx0-0.05,cy0-0.05,cx0+0.05,cy0+0.05,0,0.3,{top:T.room,side:T.wall,line:INK,lw:0.9});
+    }
+  }
+
+  const LOW=0.18;
+  // painter's order: iterate diagonals s = x+y so nearer cells draw last
+  for(let s=0;s<=2*N-2;s++){
+    for(let x=0;x<N;x++){
+      const y=s-x; if(y<0||y>=N) continue;
+      const i=y*N+x, o=owner[i]; if(o===-2) continue;
+      const nN=own(x,y-1), nW=own(x-1,y);
+      // tall back walls: full when solid against rock, half (see-through) when a room/hall sits behind
+      if(nN===-2 || !isOpen(i,(y-1)*N+x)){
+        const half = nN!==-2 || o===-1, h = wallH;
+        quad([P(x,y,0),P(x+1,y,0),P(x+1,y,h),P(x,y,h)], half?null:T.wall, half?T.ghost:INK, half?1.2:1.6);
+      }
+      if(nW===-2 || !isOpen(i,y*N+x-1)){
+        const half = nW!==-2 || o===-1, h = wallH;
+        quad([P(x,y,0),P(x,y+1,0),P(x,y+1,h),P(x,y,h)], half?null:T.wall, half?T.ghost:INK, half?1.2:1.6);
+      }
+      // low front walls only against empty space
+      if(own(x,y+1)===-2)
+        quad([P(x,y+1,0),P(x+1,y+1,0),P(x+1,y+1,LOW),P(x,y+1,LOW)],T.low,INK,1.6);
+      if(own(x+1,y)===-2)
+        quad([P(x+1,y,0),P(x+1,y+1,0),P(x+1,y+1,LOW),P(x+1,y,LOW)],T.low,INK,1.6);
+
+      // doors
+      for(const side of (doorAt.get(i)||[])){
+        const [x1,y1,x2,y2]= side==='N' ? [x,y,x+1,y] : [x,y,x,y+1];
+        /*
+         * pt(t,z)
+         * Projects a point along the door face (t in 0..1) at height z.
+         */
+        const pt=(t,z)=>P(x1+(x2-x1)*t, y1+(y2-y1)*t, z);
+        const dh=DOOR_H;
+        const style = doorStyle(x1+','+y1+','+x2+','+y2);
+        quad([pt(0.2,0),pt(0.8,0),pt(0.8,dh),pt(0.2,dh)], T.door, INK, 2);
+        if(style==='standard'){
+          // plain rectangular door; the knob is drawn below
+        } else if(style==='arch'){
+          const hw=0.3*dh;
+          const [ax0,ay0]=pt(0.2,dh*0.7), [ax1,ay1]=pt(0.8,dh*0.7);
+          line(ax0,ay0,ax1,ay1,1);
+          const steps=8, cx=(ax0+ax1)/2, cyTop=ay0;
+          ctx.beginPath(); ctx.moveTo(ax0,ay0);
+          for(let k=1;k<=steps;k++){ const a=Math.PI*(1-k/steps); ctx.lineTo(cx+Math.cos(a)*(ax1-ax0)/2, cyTop-Math.sin(a)*hw); }
+          ctx.lineTo(ax1,ay1); ctx.closePath();
+          ctx.fillStyle=T.door; ctx.fill(); ctx.strokeStyle=INK; ctx.lineWidth=1.2; ctx.stroke();
+          ctx.fillStyle=INK; ctx.beginPath(); ctx.arc(cx,cyTop-hw,1.2,0,Math.PI*2); ctx.fill();
+        } else if(style==='plank'){
+          vLines(pt,0.2,0.8,4,0,dh,0.8);
+          hLines(pt,0.2,0.8,1,dh*0.3,dh*0.7,1.1);
+          for(const z of [dh*0.3, dh*0.7]) for(const t of [0.3,0.7]){ const [sx,sy]=pt(t,z); ctx.fillStyle=INK; ctx.beginPath(); ctx.arc(sx,sy,1.1,0,Math.PI*2); ctx.fill(); }
+        } else if(style==='ajar'){
+          const t0=0.2, t1=0.72, skew=0.22;
+          const a=pt(t0,0), b=pt(t1,0), c=pt(t1+skew,dh), d2=pt(t0+skew,dh);
+          quad([a,b,c,d2], T.door, INK, 1.6);
+          const g0=pt(t1,0), g1=pt(0.8,0), g2=pt(0.8,dh), g3=pt(t1+skew,dh);
+          quad([g0,g1,g2,g3], null, INK, 0.7);
+          const [kx,ky]=pt(t0+skew+0.1,dh*0.42);
+          ctx.fillStyle=INK; ctx.beginPath(); ctx.arc(kx,ky,1.6,0,Math.PI*2); ctx.fill();
+        } else if(style==='open'){
+          quad([pt(0.28,0),pt(0.72,0),pt(0.72,dh*0.95),pt(0.28,dh*0.95)], null, INK, 0.9);
+        } else { // portcullis
+          vLines(pt,0.2,0.8,5,0,dh,1);
+          hLines(pt,0.2,0.8,2,dh*0.25,dh*0.75,1.2);
+        }
+        if(style==='standard'||style==='plank'||style==='arch'){
+          const [kx,ky]=pt(0.66,dh*0.42);
+          ctx.fillStyle=INK; ctx.beginPath(); ctx.arc(kx,ky,1.6,0,Math.PI*2); ctx.fill();
+        }
+      }
+
+      if(decorAt.has(i)) drawDecor(decorAt.get(i),x,y);
+      if(stairAt.has(i)) drawSteps(stairAt.get(i),x,y);
+    }
+  }
+
+  // room numbers
+  ctx.font='bold 15px system-ui, sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  for(const r of rooms){
+    const [sx,sy]=P(r.x+r.w/2, r.y+r.h/2, 0);
+    ctx.beginPath(); ctx.arc(sx,sy,12,0,Math.PI*2);
+    ctx.fillStyle=T.badge; ctx.fill(); ctx.strokeStyle=INK; ctx.lineWidth=1.6; ctx.stroke();
+    ctx.fillStyle=INK; ctx.fillText(String(r.id+1),sx,sy+0.5);
+  }
+}
+
+// ---- UI ----
+
+let current=null;
+
+/*
+ * build()
+ * Reads the controls, regenerates the dungeon, redraws it, and updates the
+ * status line (room count, rounded count, décor, loops, seed).
+ */
+function build(){
+  const seed=$('seed').value||'dungeon';
+  current=generate(seed,+$('size').value,+$('rooms').value,+$('round').value);
+  draw();
+  const rounded = current.rooms.filter(r=>r.R>0).length;
+  const fountains = current.decor.filter(d=>d.type==='fountain').length;
+  const pillars   = current.decor.filter(d=>d.type==='pillar').length;
+  const extras = `${fountains?', fountain':''}${pillars?`, ${pillars} pillar${pillars===1?'':'s'}`:''}`;
+  $('status').textContent=`${current.rooms.length} rooms (${rounded} rounded)${extras}, ${current.loops} loop${current.loops===1?'':'s'}, seed "${seed}"`;
+}
+
+/*
+ * draw()
+ * Re-renders the current dungeon with the current wall-height and export
+ * scale. Cheap; does not regenerate.
+ */
+function draw(){ if(current) render(current,+$('wall').value,+$('scale').value); }
+
+/*
+ * randSeed()
+ * Returns a short random base-36 seed string.
+ */
+function randSeed(){ return Math.random().toString(36).slice(2,8); }
+
+/*
+ * paintRanges()
+ * Updates each range input's --fill CSS variable so the track shows the
+ * filled portion up to the thumb. Purely cosmetic.
+ */
+function paintRanges(){
+  for(const el of document.querySelectorAll('input[type=range]')){
+    const pct=(el.value-el.min)/(el.max-el.min)*100;
+    el.style.setProperty('--fill', pct+'%');
+  }
+}
+
+// ---- wiring ----
+$('seed').value=randSeed();
+$('rand').onclick=()=>{$('seed').value=randSeed();build()};
+$('seed').oninput=build; $('size').onchange=build; $('rooms').oninput=build; $('round').onchange=build;
+$('wall').oninput=draw; $('scale').onchange=draw;
+$('dark').onclick=()=>{dark=!dark;draw()};
+$('export').onclick=()=>{
+  $('c').toBlob(b=>{
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(b);
+    a.download=`dungeon-${$('seed').value||'dungeon'}${dark?'-dark':''}.png`;
+    a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  },'image/png');
+};
+for(const el of document.querySelectorAll('input[type=range]')) el.addEventListener('input', paintRanges);
+paintRanges();
+/*
+ * syncDark()
+ * Keeps the dark-mode button label and style in sync with the current state.
+ * Runs after the main click handler so it just reflects the toggle.
+ */
+const darkBtn=$('dark');
+const syncDark=()=>{ darkBtn.textContent = dark ? 'Light' : 'Dark'; darkBtn.classList.toggle('primary', dark); };
+darkBtn.addEventListener('click', syncDark);
+syncDark();
+
+build();
+</script>
+</body>
+</html>
