@@ -135,6 +135,14 @@
     box-shadow:0 0 60px rgba(0,0,0,.6) inset;
     mix-blend-mode:multiply;
   }
+  .stage{overflow:hidden; touch-action:none}
+  canvas{transform-origin:0 0; will-change:transform; cursor:grab; -webkit-user-select:none; user-select:none}
+  canvas.panning{cursor:grabbing}
+  .zoom{position:absolute; right:18px; bottom:18px; z-index:2; display:flex; flex-direction:column; gap:6px}
+  .zoom button{width:36px; height:36px; padding:0; font-size:20px; line-height:1; display:flex; align-items:center; justify-content:center;
+    background:rgba(20,22,26,.85); color:var(--ink); border:1px solid var(--line); border-radius:10px; cursor:pointer}
+  .zoom button:hover{border-color:#3d4450; background:rgba(40,44,52,.9)}
+  .zoom button.fit{font-size:11px; letter-spacing:.3px}
   canvas{
     display:block; width:100%; height:100%; min-height:0; min-width:0;
     object-fit:contain; /* whole map always fits in the window, aspect kept */
@@ -228,7 +236,12 @@
   </div>
 </header>
 <main>
-  <div class="stage"><canvas id="c"></canvas></div>
+  <div class="stage"><canvas id="c"></canvas>
+    <div class="zoom" aria-label="Zoom controls">
+      <button id="zIn" title="Zoom in" aria-label="Zoom in">+</button>
+      <button id="zOut" title="Zoom out" aria-label="Zoom out">&minus;</button>
+      <button id="zFit" class="fit" title="Reset zoom" aria-label="Reset zoom">1:1</button>
+    </div></div>
   <p id="status"></p>
 </main>
 
@@ -307,13 +320,14 @@ function forEdgeCells(x,y,w,h,attach,fn){
  *   rmin     - smallest room side length allowed, in cells.
  *   rmax     - largest room side length allowed, in cells.
  * Returns an object:
- *   { N, owner, rooms, doors, stairs, loops, decor }
+ *   { N, owner, rooms, doors, stairs, loops, decor, deadEnds }
  *   owner  : Int16Array, -2 empty, -1 hallway, >=0 room id.
  *   rooms  : array of {id,x,y,w,h,seg}.
  *   doors  : Set of "a,b" cell-index pairs (a<b).
  *   stairs : array of {x,y,w,h,dir,rise} stair blocks.
  *   loops  : number of shortcut loops successfully carved.
- *   decor  : array of {type:'fountain'|'pillar', x, y}.
+ *   decor  : array of {type:'fountain'|'pillar'|'statue', x, y}; statues add kind (Platonic solid or sketched figure).
+ *   deadEnds : array of {x,y} tiles at the closed far end of offshoot hallways.
  */
 function generate(seed, N, count, rmin, rmax){
   const rng = mulberry(hash(seed));
@@ -674,7 +688,48 @@ function generate(seed, N, count, rmin, rmax){
     }
   }
 
-  return {N, owner, rooms: finalRooms, doors, stairs, loops, decor};
+  // statues: any room still empty after the fountain and pillars gets one in its middle.
+  // Each is one of the five Platonic solids, cycling through them from a random start so
+  // every solid shows up once there are five or more statues.
+  // Three more are hand-sketched people (the scale figures in architectural drawings); the pool
+  // is now eight kinds and cycles the same way.
+  let kindN = ri(0,STATUE_KINDS.length-1);
+  for(const r of finalRooms){
+    let has=false;
+    for(const it of decor) if(it.x>=r.x && it.x<r.x+r.w && it.y>=r.y && it.y<r.y+r.h){ has=true; break; }
+    if(has) continue;
+    const sx=r.x+Math.floor(r.w/2), sy=r.y+Math.floor(r.h/2);
+    if(freeForDecor(sx,sy)){ decor.push({type:'statue', x:sx, y:sy, kind:STATUE_KINDS[kindN++ % STATUE_KINDS.length]}); occupied.add(sx+','+sy); }
+  }
+
+  // ---- 8. dead ends ----
+  // A surviving offshoot hallway is a dead end when nothing continues past its far end:
+  // the cell beyond is rock, or a room wall with no door in it. The star goes on its last tile,
+  // unless that tile is within DOOR_CLEAR spaces (counted in grid steps, ignoring walls) of any door.
+  const DOOR_CLEAR = 4;
+  const doorCells = [];
+  for(const k of doors){ const [a,b]=k.split(',').map(Number); doorCells.push([a%N,(a/N)|0],[b%N,(b/N)|0]); }
+  const nearDoor = (tx,ty) => doorCells.some(([dx,dy]) => Math.abs(dx-tx)+Math.abs(dy-ty) <= DOOR_CLEAR);
+  const deadEnds = [];
+  for(const s of segs){
+    if(s.depth===0 || !s.used) continue;
+    const dv = {N:[0,-1],S:[0,1],W:[-1,0],E:[1,0]}[s.dir];
+    const end = [];
+    for(let yy=s.y;yy<s.y+s.h;yy++) for(let xx=s.x;xx<s.x+s.w;xx++){
+      const onEnd = dv[0]<0 ? xx===s.x : dv[0]>0 ? xx===s.x+s.w-1 : dv[1]<0 ? yy===s.y : yy===s.y+s.h-1;
+      if(onEnd) end.push([xx,yy]);
+    }
+    const blocked = end.every(([xx,yy])=>{
+      const bx=xx+dv[0], by=yy+dv[1];
+      if(bx<0||by<0||bx>=N||by>=N) return true;
+      const ob=owner[at(bx,by)];
+      return ob===-2 || (ob>=0 && !doors.has(key(at(xx,yy),at(bx,by))));
+    });
+    const spot = blocked && end.find(([xx,yy]) => !nearDoor(xx,yy));
+    if(spot) deadEnds.push({x:spot[0], y:spot[1]});
+  }
+
+  return {N, owner, rooms: finalRooms, doors, stairs, loops, decor, deadEnds};
 }
 
 // ---- rendering ----
@@ -685,6 +740,218 @@ const WALL_MAX=1.4;  // tallest wall the slider allows; used so the view never s
 const LIGHT={bg:'#fbfaf6',ink:'#1a1a1a',room:'#ffffff',hall:'#efece3',grid:'#d8d4c7',ghost:'#9a978c',wall:'#e9e5d9',low:'#ffffff',door:'#ffffff',badge:'#ffffff'};
 const DARK={bg:'#000000',ink:'#ffffff',room:'#000000',hall:'#0c0c0c',grid:'#333333',ghost:'#8a8a8a',wall:'#141414',low:'#000000',door:'#000000',badge:'#000000'};
 let dark=false, T=LIGHT, INK=T.ink;
+
+/*
+ * starPts(cx,cy,R,rot)
+ * Ten vertices (alternating outer/inner) of a five-pointed star in cell units,
+ * centred at (cx,cy); rot is the angle of the first point. The caller projects them.
+ */
+function starPts(cx,cy,R,rot){
+  const pts=[];
+  for(let k=0;k<10;k++){ const a=rot+k*Math.PI/5, r=k%2?R*0.42:R; pts.push([cx+Math.cos(a)*r, cy+Math.sin(a)*r]); }
+  return pts;
+}
+
+// ---- Platonic solids (the statues) ----
+
+const SOLIDS=['tetrahedron','cube','octahedron','dodecahedron','icosahedron'];
+
+/*
+ * hullFaces(V)
+ * Faces of the convex solid whose vertices V are centred on the origin. Finds every plane
+ * through three vertices with all the others on one side, gathers the vertices lying on it,
+ * and orders them around the face. Returns [{idx:[vertex indices], n:[outward unit normal]}].
+ */
+function hullFaces(V){
+  const sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]];
+  const cr=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+  const dt=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+  const faces=new Map(), n=V.length, EPS=1e-6;
+  for(let i=0;i<n;i++) for(let j=i+1;j<n;j++) for(let k=j+1;k<n;k++){
+    let nm=cr(sub(V[j],V[i]),sub(V[k],V[i]));
+    const len=Math.hypot(nm[0],nm[1],nm[2]); if(len<1e-9) continue;
+    nm=nm.map(c=>c/len);
+    if(dt(nm,V[i])<0) nm=nm.map(c=>-c);
+    const on=[]; let ok=true;
+    for(let m=0;m<n;m++){ const s=dt(nm,sub(V[m],V[i])); if(s>EPS){ok=false;break} if(s>-EPS) on.push(m); }
+    if(!ok) continue;
+    const key=on.join(',');
+    if(!faces.has(key)) faces.set(key,{idx:on,n:nm});
+  }
+  for(const f of faces.values()){
+    const c=[0,0,0]; for(const m of f.idx) for(let a=0;a<3;a++) c[a]+=V[m][a]/f.idx.length;
+    const u=sub(V[f.idx[0]],c), ul=Math.hypot(u[0],u[1],u[2]), uu=u.map(q=>q/ul), w=cr(f.n,uu);
+    const ang=m=>{const p=sub(V[m],c);return Math.atan2(dt(p,w),dt(p,uu))};
+    f.idx.sort((a,b)=>ang(a)-ang(b));
+  }
+  return [...faces.values()];
+}
+
+const solidCache={};
+/*
+ * solidGeom(name)
+ * Oriented, unit-circumradius geometry for one solid: {verts, faces, zmin}. Tetrahedron and
+ * dodecahedron rest on a face; cube, octahedron and icosahedron balance on a vertex. Each is
+ * turned a little about the vertical so no face is exactly edge-on in the isometric view.
+ * Coordinates are centred on the solid; zmin is the lowest point (negative).
+ */
+function solidGeom(name){
+  if(solidCache[name]) return solidCache[name];
+  const phi=(1+Math.sqrt(5))/2, sg=[-1,1];
+  let V=[];
+  if(name==='tetrahedron') V=[[1,1,1],[1,-1,-1],[-1,1,-1],[-1,-1,1]];
+  else if(name==='cube'){ for(const a of sg)for(const b of sg)for(const c of sg) V.push([a,b,c]); }
+  else if(name==='octahedron'){ for(const s of sg) V.push([s,0,0],[0,s,0],[0,0,s]); }
+  else if(name==='icosahedron'){ for(const a of sg)for(const b of sg) V.push([0,a,b*phi],[a,b*phi,0],[b*phi,0,a]); }
+  else { // dodecahedron
+    for(const a of sg)for(const b of sg)for(const c of sg) V.push([a,b,c]);
+    for(const a of sg)for(const b of sg) V.push([0,a/phi,b*phi],[a/phi,b*phi,0],[b*phi,0,a/phi]);
+  }
+  // direction that should point straight down: a face normal, or a vertex direction
+  let a;
+  if(name==='tetrahedron'||name==='dodecahedron') a=hullFaces(V)[0].n;
+  else { const l=Math.hypot(...V[0]); a=V[0].map(c=>c/l); }
+  // rotate so `a` maps onto -z (Rodrigues form, b = (0,0,-1))
+  const v=[-a[1],a[0],0], c=-a[2], k=1/(1+c);
+  const rot = c<-0.999999
+    ? p=>[p[0],-p[1],-p[2]]
+    : p=>[p[0]*c+(v[1]*p[2]-v[2]*p[1])+v[0]*(v[0]*p[0]+v[1]*p[1])*k,
+          p[1]*c+(v[2]*p[0]-v[0]*p[2])+v[1]*(v[0]*p[0]+v[1]*p[1])*k,
+          p[2]*c+(v[0]*p[1]-v[1]*p[0])];
+  const yaw=0.4, cy=Math.cos(yaw), sy=Math.sin(yaw);
+  V=V.map(rot).map(([x,y,z])=>[x*cy-y*sy, x*sy+y*cy, z]);
+  const r=Math.max(...V.map(p=>Math.hypot(p[0],p[1],p[2])));
+  V=V.map(p=>p.map(q=>q/r));
+  return solidCache[name]={verts:V, faces:hullFaces(V), zmin:Math.min(...V.map(p=>p[2]))};
+}
+
+/*
+ * solidFill(n)
+ * Flat shading for a solid's face with unit normal n: faces turned toward the light are
+ * paper-white (T.room), the rest take the wall tone (T.wall).
+ */
+const solidFill = n => (n[0]*0.5 - n[1]*0.2 + n[2]*0.85) > 0.45 ? T.room : T.wall;
+
+/* ---- hand-sketched people statues -------------------------------------------------------
+   The little "scale figures" architects pencil into elevations: a few loose strokes, doubled
+   and wobbly, a paper-coloured body so lines behind it drop out, and a touch of hatching.
+   Everything is drawn in 'design units' (feet at the origin, ~32 tall) and mapped to screen. */
+const FIGURES=['standing','walking','cloaked'];
+const STATUE_KINDS=SOLIDS.concat(FIGURES);
+
+// One pencil stroke: optional paper fill, then the outline twice with independent wobble
+// (second pass thinner and fainter) so it reads as a re-gone-over line, not a vector.
+function sketchPath(ctx,q,o,rnd,ink,paper){
+  const jit=o.jit==null?0.45:o.jit, w=o.w||1.1;
+  const pass=(k,lw,alpha,fill)=>{
+    ctx.beginPath();
+    q.forEach((p,i)=>{ const x=p[0]+(rnd()-.5)*2*jit, y=p[1]+(rnd()-.5)*2*jit; i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+    if(o.close) ctx.closePath();
+    if(fill&&o.fill){ ctx.fillStyle=paper; ctx.fill(); }
+    ctx.globalAlpha=alpha; ctx.strokeStyle=ink; ctx.lineWidth=lw; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke(); ctx.globalAlpha=1;
+  };
+  pass(0,w,1,true); pass(1,w*0.6,0.5,false);
+}
+// diagonal hatching clipped to a polygon
+function sketchHatch(ctx,poly,gap,ang,rnd,ink,w){
+  ctx.save(); ctx.beginPath(); poly.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1])); ctx.closePath(); ctx.clip();
+  let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9; for(const p of poly){x0=Math.min(x0,p[0]);y0=Math.min(y0,p[1]);x1=Math.max(x1,p[0]);y1=Math.max(y1,p[1]);}
+  const L=Math.hypot(x1-x0,y1-y0), cx=(x0+x1)/2, cy=(y0+y1)/2, dx=Math.cos(ang), dy=Math.sin(ang);
+  ctx.strokeStyle=ink; ctx.lineWidth=w; ctx.globalAlpha=0.75; ctx.lineCap='round';
+  for(let t=-L/2;t<=L/2;t+=gap){
+    const bx=cx-dy*t, by=cy+dx*t, j=(rnd()-.5)*gap*0.3;
+    ctx.beginPath(); ctx.moveTo(bx-dx*L+j,by-dy*L); ctx.lineTo(bx+dx*L+j,by+dy*L); ctx.stroke();
+  }
+  ctx.restore();
+}
+function sketchRing(cx,cy,rx,ry,n,rot){
+  const q=[]; for(let i=0;i<=n;i++){ const a=i/n*Math.PI*2+(rot||0); q.push([cx+Math.cos(a)*rx, cy+Math.sin(a)*ry]); } return q;
+}
+
+// Elevation figure for the isometric view. (ax,ay) = screen point under the feet.
+function drawSketchFigure(ctx,kind,ax,ay,s,flip,rnd,ink,paper){
+  const M=(x,y)=>[ax+x*flip*s, ay+y*s];
+  const L=(pts,o)=>sketchPath(ctx,pts.map(p=>M(p[0],p[1])),Object.assign({w:1.1*Math.max(s,0.8)},o||{}),rnd,ink,paper);
+  const H=(pts,gap,ang)=>sketchHatch(ctx,pts.map(p=>M(p[0],p[1])),gap*s,ang,rnd,ink,0.6);
+  ctx.save();
+  if(kind==='standing'){
+    L([[-2,-15],[-2.6,-1]]); L([[2,-15],[2.6,-1]]);           // legs
+    L([[-2.6,-1],[-5,-0.6]]); L([[2.6,-1],[5,-0.6]]);         // feet
+    const coat=[[-5.5,-26],[5.5,-26],[7,-13],[-7,-13]];
+    L(coat,{close:true,fill:true}); H([[0.5,-26],[5.5,-26],[7,-13],[1,-13]],1.8,0.9);
+    L([[-5.5,-25],[-8,-14.5]]); L([[5.5,-25],[8,-14.5]]);     // arms
+    L([[0,-26],[0,-28.2]]);                                    // neck
+    L(sketchRing(0,-30.6,2.6,2.9,14),{close:true,fill:true,w:1});
+  } else if(kind==='walking'){
+    L([[0,-15],[-5.5,-1]]); L([[0,-15],[4.5,-1]]);            // striding legs
+    L([[-5.5,-1],[-8,-0.5]]); L([[4.5,-1],[7.2,-0.8]]);
+    const coat=[[-3.5,-26],[6.5,-26],[5,-13],[-6.5,-13]];
+    L(coat,{close:true,fill:true}); H([[-3.5,-26],[1.5,-26],[0,-13],[-6.5,-13]],1.8,-0.9);
+    L([[6.5,-25],[10,-17]]);                                   // front arm swings out
+    L([[-3.5,-25],[-8.5,-18]]);                                // back arm
+    L([[-8.5,-18],[-8.8,-13]]);                                // bag strap
+    L([[-11.5,-13],[-6,-13],[-6,-8],[-11.5,-8]],{close:true,fill:true,w:1});
+    L([[2,-26],[2.6,-28.2]]);
+    L(sketchRing(3,-30.6,2.6,2.9,14),{close:true,fill:true,w:1});
+  } else { // cloaked: hooded/hatted figure with a staff
+    const cloak=[[-3.5,-26],[3.5,-26],[6,-16],[9.5,-1],[0,0.6],[-9.5,-1],[-6,-16]];
+    L(cloak,{close:true,fill:true}); H(cloak.slice(0,3).concat([[9.5,-1],[0,0.6]]).map(p=>[p[0]*1,p[1]]),1.7,0.95);
+    L([[-2,-23],[-4.2,-1]],{w:0.7}); L([[1.5,-23],[3,0]],{w:0.7}); L([[4,-20],[7,-1.5]],{w:0.7});
+    L(sketchRing(0,-29,2.3,2.6,12),{close:true,fill:true,w:0.9});
+    L([[-6.5,-31],[6.5,-31]],{w:1.2});                          // hat brim
+    L([[-3,-31],[-2,-37],[2,-37],[3,-31]],{close:true,fill:true,w:1});
+    L([[9,-34],[9.2,0]]); L([[8,-35],[10.4,-35]],{w:0.9});       // staff + knob
+    L([[5,-19],[8.7,-18.5]],{w:0.9});                            // hand to staff
+  }
+  ctx.restore();
+}
+
+// The same people seen from directly above, for plan view. (cx,cy) = centre, u = px per design unit.
+function drawSketchPlan(ctx,kind,cx,cy,u,flip,rnd,ink,paper){
+  const M=(x,y)=>[cx+x*flip*u, cy+y*u];
+  const L=(pts,o)=>sketchPath(ctx,pts.map(p=>M(p[0],p[1])),Object.assign({w:1.1},o||{}),rnd,ink,paper);
+  ctx.save();
+  if(kind==='standing'){
+    L(sketchRing(0,0,9,4.6,16),{close:true,fill:true});         // shoulders
+    L([[-9,0],[-10.5,3]],{w:0.9}); L([[9,0],[10.5,3]],{w:0.9}); // arm ticks
+    sketchHatch(ctx,sketchRing(0,0,9,4.6,16).map(p=>M(p[0],p[1])),2.4*u,0.7,rnd,ink,0.6);
+    const hd=sketchRing(0,0.4,3.6,3.6,12);
+    L(hd,{close:true,fill:true,w:1}); sketchHatch(ctx,hd.map(p=>M(p[0],p[1])),1.3*u,-0.8,rnd,ink,0.7); // head, hatched hair
+  } else if(kind==='walking'){
+    L([[-4,6],[-4,9.5]],{w:1.8}); L([[4,2.5],[4,6]],{w:1.8});    // footprints
+    L(sketchRing(0,0,9,4.4,16,0.45),{close:true,fill:true});
+    L([[6.5,3],[9.5,6.5]],{w:0.9}); L([[-6.5,-3],[-9.5,-6]],{w:0.9});
+    sketchHatch(ctx,sketchRing(0,0,9,4.4,16,0.45).map(p=>M(p[0],p[1])),2.4*u,0.7,rnd,ink,0.6);
+    const hd=sketchRing(0.5,0,3.6,3.6,12);
+    L(hd,{close:true,fill:true,w:1}); sketchHatch(ctx,hd.map(p=>M(p[0],p[1])),1.3*u,-0.8,rnd,ink,0.7);
+  } else {
+    const R=9.8, ring=sketchRing(0,0,R,R,18).map(p=>M(p[0],p[1]));
+    sketchPath(ctx,ring,{close:true,fill:true,w:1.1},rnd,ink,paper);
+    sketchHatch(ctx,ring,3.2*u,0.8,rnd,ink,0.6);
+    L(sketchRing(0,0,7,7,16),{close:true,fill:true,w:1});        // hat brim
+    L(sketchRing(0,0,3.2,3.2,12),{close:true,fill:true,w:1});    // crown
+    L(sketchRing(11.5,-3,1.4,1.4,8),{close:true,fill:true,w:1}); // staff tip
+  }
+  ctx.restore();
+}
+
+/*
+ * pickBadgeSpot(r, obst, proj)
+ * Chooses where a room's number badge goes: the point inside room r (grid coords, half-cell
+ * steps, kept off the walls) whose projected position is farthest from every obstacle sample
+ * (statues, pillars, fountain, doors, stairs, stars). Ties go to the point nearest the room centre.
+ */
+function pickBadgeSpot(r,obst,proj){
+  const cx=r.x+r.w/2, cy=r.y+r.h/2;
+  let best=[cx,cy], bs=-1e9;
+  for(let gy=r.y+0.6; gy<=r.y+r.h-0.6+1e-6; gy+=0.5) for(let gx=r.x+0.6; gx<=r.x+r.w-0.6+1e-6; gx+=0.5){
+    const [sx,sy]=proj(gx,gy,0);
+    let m=1e9; for(const o of obst){ const dd=Math.hypot(o[0]-sx,o[1]-sy); if(dd<m) m=dd; }
+    const [cx2,cy2]=proj(cx,cy,0), sc=Math.min(m,70)-0.02*Math.hypot(cx2-sx,cy2-sy);
+    if(sc>bs){ bs=sc; best=[gx,gy]; }
+  }
+  return best;
+}
 
 const OTHER_DOOR_STYLES=['arch','plank','ajar','open','portcullis'];
 /*
@@ -837,6 +1104,15 @@ function render(d, wallH, scale){
   for(const s of (d.stairs||[])) if(!s.rise)
     quad([P(s.x,s.y,0),P(s.x+s.w,s.y,0),P(s.x+s.w,s.y+s.h,0),P(s.x,s.y+s.h,0)], T.hall, null, 0);
 
+  // dead ends: a black star in a circle, flat on the floor tile. Painted in the floor layer
+  // (right after the tiles and grid) so walls, doors and decor all draw on top of it.
+  for(const e of (d.deadEnds||[])){
+    const cx=e.x+0.5, cy=e.y+0.5, ring=[];
+    for(let k=0;k<36;k++){ const a=k/36*Math.PI*2; ring.push(P(cx+Math.cos(a)*0.34, cy+Math.sin(a)*0.34, 0)); }
+    quad(ring, T.room, INK, 1.6);
+    quad(starPts(cx,cy,0.26,Math.PI*1.25).map(([a,b])=>P(a,b,0)), INK, INK, 0.8); // first point faces up-screen
+  }
+
   const decorAt=new Map();
   for(const it of (decor||[])) decorAt.set(it.y*N+it.x, it);
 
@@ -899,6 +1175,24 @@ function render(d, wallH, scale){
       // base slab first so the column's bottom edges draw on top of it
       quad([P(cx0-r-0.04,cy0-r-0.04,0),P(cx0+r+0.04,cy0-r-0.04,0),P(cx0+r+0.04,cy0+r+0.04,0),P(cx0-r-0.04,cy0+r+0.04,0)],T.room,INK,1.1);
       isoBox(cx0-r,cy0-r,cx0+r,cy0+r,0,h,{top:T.room,side:T.wall,line:INK,lw:1.1,topLw:1.2});
+    } else if(it.type==='statue'){
+      // a Platonic solid on a two-tier plinth. The projection is parallel along (1,1,0.7), so a
+      // face is visible exactly when its normal has a positive dot product with that direction.
+      const o={top:T.room,side:T.wall,line:INK,lw:1.1};
+      isoBox(cx0-0.30,cy0-0.30,cx0+0.30,cy0+0.30,0,0.08,o);
+      isoBox(cx0-0.23,cy0-0.23,cx0+0.23,cy0+0.23,0.08,0.20,o);
+      if(SOLIDS.includes(it.kind)){
+        const g=solidGeom(it.kind), R=0.27, zc=0.20-g.zmin*R;
+        const vt=g.verts.map(v=>P(cx0+v[0]*R, cy0+v[1]*R, zc+v[2]*R));
+        for(const f of g.faces){
+          if(f.n[0]+f.n[1]+0.7*f.n[2] <= 1e-6) continue;
+          quad(f.idx.map(i=>vt[i]), solidFill(f.n), INK, 1.1);
+        }
+      } else {
+        // sketched person, drawn flat to the screen (a "billboard") standing on the plinth top
+        const [ax,ay]=P(cx0,cy0,0.20);
+        drawSketchFigure(ctx,it.kind,ax,ay,0.9,(hash(it.x+','+it.y)&1)?1:-1,mulberry(hash('fig'+it.x+','+it.y)),INK,T.room);
+      }
     } else { // fountain
       const r=0.34, zRim=0.12, zWater=0.07, wr=0.26;
       isoBox(cx0-r,cy0-r,cx0+r,cy0+r,0,zRim,{top:T.wall,side:T.wall,line:INK,lw:1.1});
@@ -908,6 +1202,13 @@ function render(d, wallH, scale){
   }
 
   const LOW=0.18;
+  // a see-through wall is a half-opaque veil in the page colour: everything already drawn behind
+  // it (floor grid, far walls, decor) shows at half brightness
+  const ghostVeil=pts=>{ ctx.beginPath(); pts.forEach(([a,b],k)=>k?ctx.lineTo(a,b):ctx.moveTo(a,b)); ctx.closePath();
+    ctx.globalAlpha=0.5; ctx.fillStyle=T.bg; ctx.fill(); ctx.globalAlpha=1; };
+  // the top edge of a see-through (ghost) wall is drawn twice as heavy as its other edges
+  const ghostTop=(a,b)=>{ ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.strokeStyle=T.ghost; ctx.lineWidth=2.4; ctx.stroke(); };
+
   // painter's order: iterate diagonals s = x+y so nearer cells draw last
   for(let s=0;s<=2*N-2;s++){
     for(let x=0;x<N;x++){
@@ -920,20 +1221,30 @@ function render(d, wallH, scale){
       // tall back walls: full when solid against rock, half (see-through) when a room/hall sits behind
       if(nN===-2 || !isOpen(i,(y-1)*N+x)){
         const half = nN!==-2 || o===-1, h = wallH;
+        if(half) ghostVeil([P(x,y,0),P(x+1,y,0),P(x+1,y,h),P(x,y,h)]);
         quad([P(x,y,0),P(x+1,y,0),P(x+1,y,h),P(x,y,h)], half?null:T.wall, half?T.ghost:INK, half?1.2:1.6);
+        if(half) ghostTop(P(x,y,h),P(x+1,y,h));
       }
       if(nW===-2 || !isOpen(i,y*N+x-1)){
         const half = nW!==-2 || o===-1, h = wallH;
+        if(half) ghostVeil([P(x,y,0),P(x,y+1,0),P(x,y+1,h),P(x,y,h)]);
         quad([P(x,y,0),P(x,y+1,0),P(x,y+1,h),P(x,y,h)], half?null:T.wall, half?T.ghost:INK, half?1.2:1.6);
+        if(half) ghostTop(P(x,y,h),P(x,y+1,h));
       }
       // low front walls only against empty space
       // around a descending flight these are see-through (hallway style) so the steps stay visible
       const pitHere = !!stHere && !stHere.rise;
       const lowFill = pitHere ? null : T.low, lowLine = pitHere ? T.ghost : INK, lowLw = pitHere ? 1.2 : 1.6;
-      if(own(x,y+1)===-2)
+      if(own(x,y+1)===-2){
+        if(pitHere) ghostVeil([P(x,y+1,0),P(x+1,y+1,0),P(x+1,y+1,LOW),P(x,y+1,LOW)]);
         quad([P(x,y+1,0),P(x+1,y+1,0),P(x+1,y+1,LOW),P(x,y+1,LOW)],lowFill,lowLine,lowLw);
-      if(own(x+1,y)===-2)
+        if(pitHere) ghostTop(P(x,y+1,LOW),P(x+1,y+1,LOW));
+      }
+      if(own(x+1,y)===-2){
+        if(pitHere) ghostVeil([P(x+1,y,0),P(x+1,y+1,0),P(x+1,y+1,LOW),P(x+1,y,LOW)]);
         quad([P(x+1,y,0),P(x+1,y+1,0),P(x+1,y+1,LOW),P(x+1,y,LOW)],lowFill,lowLine,lowLw);
+        if(pitHere) ghostTop(P(x+1,y,LOW),P(x+1,y+1,LOW));
+      }
 
       // doors
       for(const side of (doorAt.get(i)||[])){
@@ -989,8 +1300,21 @@ function render(d, wallH, scale){
 
   // room numbers
   ctx.font='bold 15px system-ui, sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  // obstacle samples (screen space): each decor item up its full height, doors, stairs, stars
+  const obst=[];
+  for(const it of (decor||[])){
+    const top = it.type==='pillar' ? wallH : it.type==='statue' ? 1.0 : 0.2;
+    for(let z=0;z<=top+1e-6;z+=0.15) obst.push(P(it.x+0.5,it.y+0.5,z));
+  }
+  for(const k of doors){
+    const [a,b]=k.split(',').map(Number), ax=a%N, ay=(a/N)|0, bx=b%N, by=(b/N)|0;
+    for(let z=0;z<=DOOR_H;z+=0.2) obst.push(P((ax+bx)/2+0.5,(ay+by)/2+0.5,z));
+  }
+  for(const st of (d.stairs||[])) for(let yy=st.y;yy<st.y+st.h;yy++) for(let xx=st.x;xx<st.x+st.w;xx++) obst.push(P(xx+0.5,yy+0.5,0));
+  for(const e of (d.deadEnds||[])) obst.push(P(e.x+0.5,e.y+0.5,0));
   for(const r of rooms){
-    const [sx,sy]=P(r.x+r.w/2, r.y+r.h/2, 0);
+    const [gx,gy]=pickBadgeSpot(r,obst,P);
+    const [sx,sy]=P(gx,gy,0);
     ctx.beginPath(); ctx.arc(sx,sy,12,0,Math.PI*2);
     ctx.fillStyle=T.badge; ctx.fill(); ctx.strokeStyle=INK; ctx.lineWidth=1.6; ctx.stroke();
     ctx.fillStyle=INK; ctx.fillText(String(r.id+1),sx,sy+0.5);
@@ -1044,6 +1368,16 @@ function renderTop(d, wallH, scale){
   for(let y=0;y<N;y++) for(let x=0;x<N;x++){
     const i=y*N+x; if(owner[i]===-2 || stairAt.has(i)) continue;
     ctx.strokeRect(X(x),Y(y),TS,TS);
+  }
+
+  // dead ends: a black star in a circle
+  for(const e of (d.deadEnds||[])){
+    const cx=X(e.x+0.5), cy=Y(e.y+0.5);
+    ctx.beginPath(); ctx.arc(cx,cy,0.36*TS,0,Math.PI*2); ctx.fillStyle=T.room; ctx.fill();
+    ctx.strokeStyle=INK; ctx.lineWidth=1.6; ctx.stroke();
+    ctx.beginPath();
+    starPts(0,0,0.27,-Math.PI/2).forEach(([a,b],k)=>{ const px=cx+a*TS, py=cy+b*TS; k?ctx.lineTo(px,py):ctx.moveTo(px,py); });
+    ctx.closePath(); ctx.fillStyle=INK; ctx.fill();
   }
 
   // stairs: step bands, step lines, direction arrow
@@ -1123,6 +1457,23 @@ function renderTop(d, wallH, scale){
       ctx.fillStyle=T.wall; ctx.fillRect(cx-r,cy-r,2*r,2*r);
       ctx.strokeStyle=INK; ctx.lineWidth=2; ctx.strokeRect(cx-r,cy-r,2*r,2*r);
       line(cx-r,cy-r,cx+r,cy+r,1); line(cx+r,cy-r,cx-r,cy+r,1);
+    } else if(it.type==='statue'){
+      // square plinth
+      const r=0.3*TS;
+      ctx.fillStyle=T.wall; ctx.fillRect(cx-r,cy-r,2*r,2*r);
+      ctx.strokeStyle=INK; ctx.lineWidth=2; ctx.strokeRect(cx-r,cy-r,2*r,2*r);
+      // the solid seen from straight above: only faces pointing up are visible
+      if(SOLIDS.includes(it.kind)){
+        const g=solidGeom(it.kind), R=0.22*TS;
+        for(const f of g.faces){
+          if(f.n[2]<=1e-6) continue;
+          ctx.beginPath();
+          f.idx.forEach((m,k)=>{ const px=cx+g.verts[m][0]*R, py=cy+g.verts[m][1]*R; k?ctx.lineTo(px,py):ctx.moveTo(px,py); });
+          ctx.closePath(); ctx.fillStyle=solidFill(f.n); ctx.fill(); ctx.strokeStyle=INK; ctx.lineWidth=1.1; ctx.stroke();
+        }
+      } else {
+        drawSketchPlan(ctx,it.kind,cx,cy,TS/40,(hash(it.x+','+it.y)&1)?1:-1,mulberry(hash('fig'+it.x+','+it.y)),INK,T.wall);
+      }
     } else {
       ctx.beginPath(); ctx.arc(cx,cy,0.34*TS,0,Math.PI*2); ctx.fillStyle=T.wall; ctx.fill(); ctx.strokeStyle=INK; ctx.lineWidth=2; ctx.stroke();
       ctx.beginPath(); ctx.arc(cx,cy,0.22*TS,0,Math.PI*2); ctx.fillStyle=T.badge; ctx.fill(); ctx.lineWidth=1; ctx.stroke();
@@ -1130,10 +1481,16 @@ function renderTop(d, wallH, scale){
     }
   }
 
-  // room numbers sit in each room's top-left corner so they never cover the fountain or pillars
+  // room numbers go where they're farthest from the decor, doors, stairs and stars
   ctx.font='bold 15px system-ui, sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  const obst=[];
+  for(const it of (decor||[])) obst.push([X(it.x+0.5),Y(it.y+0.5)]);
+  for(const k of doors){ const [a,b]=k.split(',').map(Number); obst.push([X((a%N+b%N)/2+0.5),Y(((a/N|0)+(b/N|0))/2+0.5)]); }
+  for(const st of (d.stairs||[])) for(let yy=st.y;yy<st.y+st.h;yy++) for(let xx=st.x;xx<st.x+st.w;xx++) obst.push([X(xx+0.5),Y(yy+0.5)]);
+  for(const e of (d.deadEnds||[])) obst.push([X(e.x+0.5),Y(e.y+0.5)]);
   for(const r of d.rooms){
-    const sx=X(r.x+0.6), sy=Y(r.y+0.6);
+    const [gx,gy]=pickBadgeSpot(r,obst,(a,b)=>[X(a),Y(b)]);
+    const sx=X(gx), sy=Y(gy);
     ctx.beginPath(); ctx.arc(sx,sy,12,0,Math.PI*2);
     ctx.fillStyle=T.badge; ctx.fill(); ctx.strokeStyle=INK; ctx.lineWidth=1.6; ctx.stroke();
     ctx.fillStyle=INK; ctx.fillText(String(r.id+1),sx,sy+0.5);
@@ -1156,7 +1513,9 @@ function build(){
   draw();
   const fountains = current.decor.filter(d=>d.type==='fountain').length;
   const pillars   = current.decor.filter(d=>d.type==='pillar').length;
-  const extras = `${fountains?', fountain':''}${pillars?`, ${pillars} pillar${pillars===1?'':'s'}`:''}`;
+  const statues   = current.decor.filter(d=>d.type==='statue').length;
+  const ends      = current.deadEnds.length;
+  const extras = `${fountains?', fountain':''}${pillars?`, ${pillars} pillar${pillars===1?'':'s'}`:''}${statues?`, ${statues} statue${statues===1?'':'s'}`:''}${ends?`, ${ends} dead end${ends===1?'':'s'}`:''}`;
   $('status').textContent=`${current.rooms.length} rooms${extras}, ${current.loops} loop${current.loops===1?'':'s'}, seed "${seed}"`;
 }
 
@@ -1199,6 +1558,64 @@ function paintRanges(){
     el.style.setProperty('--fill', pct+'%');
   }
 }
+
+// ---- zoom & pan ----
+/* View transform applied to the canvas with CSS (the bitmap is never re-rendered, so the map
+   layout and exports are unaffected). z = zoom (1 = fit to window), tx/ty = pan in CSS px,
+   measured from the canvas's un-zoomed top-left corner. */
+const view={z:1,tx:0,ty:0}, ZMIN=1, ZMAX=6;
+function applyView(){
+  const cv=$('c'), cw=cv.offsetWidth, ch=cv.offsetHeight;
+  view.z=Math.min(ZMAX,Math.max(ZMIN,view.z));
+  view.tx=Math.min(0,Math.max(cw*(1-view.z),view.tx));   // keep the map covering the window
+  view.ty=Math.min(0,Math.max(ch*(1-view.z),view.ty));
+  cv.style.transform=`translate(${view.tx}px,${view.ty}px) scale(${view.z})`;
+  $('zIn').disabled=view.z>=ZMAX-1e-6; $('zOut').disabled=view.z<=ZMIN+1e-6;
+  $('zFit').textContent=view.z===1?'1:1':Math.round(view.z*100)+'%';
+}
+// zoom by factor f keeping the point (px,py) (CSS px from the canvas's un-zoomed corner) fixed
+function zoomAt(f,px,py){
+  const nz=Math.min(ZMAX,Math.max(ZMIN,view.z*f)), k=nz/view.z;
+  view.tx=px-(px-view.tx)*k; view.ty=py-(py-view.ty)*k; view.z=nz; applyView();
+}
+function stagePt(e){ const cv=$('c'), r=cv.parentElement.getBoundingClientRect();
+  return [e.clientX-r.left-cv.offsetLeft, e.clientY-r.top-cv.offsetTop]; }
+(function(){
+  const st=document.querySelector('.stage'), cv=$('c'), ptrs=new Map();
+  let lastDist=0, lastMid=null;
+  const centre=()=>[cv.offsetWidth/2, cv.offsetHeight/2];
+  $('zIn').onclick=()=>zoomAt(1.4,...centre());
+  $('zOut').onclick=()=>zoomAt(1/1.4,...centre());
+  $('zFit').onclick=()=>{view.z=1;view.tx=0;view.ty=0;applyView();};
+  st.addEventListener('wheel',e=>{
+    e.preventDefault();
+    const [px,py]=stagePt(e);
+    // pinch on a trackpad arrives as ctrl+wheel with small deltas
+    zoomAt(Math.exp(-e.deltaY*(e.ctrlKey?0.01:0.0015)),px,py);
+  },{passive:false});
+  st.addEventListener('dblclick',e=>{ if(e.target.closest('.zoom')) return; const [px,py]=stagePt(e); view.z>1.01?(view.z=1,view.tx=0,view.ty=0,applyView()):zoomAt(2,px,py); });
+  st.addEventListener('pointerdown',e=>{
+    if(e.target.closest('.zoom')) return;
+    st.setPointerCapture(e.pointerId); ptrs.set(e.pointerId,[e.clientX,e.clientY]);
+    cv.classList.add('panning'); lastDist=0; lastMid=null;
+  });
+  st.addEventListener('pointermove',e=>{
+    if(!ptrs.has(e.pointerId)) return;
+    const prev=ptrs.get(e.pointerId); ptrs.set(e.pointerId,[e.clientX,e.clientY]);
+    if(ptrs.size===1){ view.tx+=e.clientX-prev[0]; view.ty+=e.clientY-prev[1]; applyView(); }
+    else if(ptrs.size===2){                       // two fingers: pinch to zoom + drag to pan
+      const [a,b]=[...ptrs.values()], dist=Math.hypot(a[0]-b[0],a[1]-b[1]);
+      const mid={clientX:(a[0]+b[0])/2, clientY:(a[1]+b[1])/2}, [px,py]=stagePt(mid);
+      if(lastMid){ view.tx+=mid.clientX-lastMid.clientX; view.ty+=mid.clientY-lastMid.clientY; }
+      if(lastDist) zoomAt(dist/lastDist,px,py); else applyView();
+      lastDist=dist; lastMid=mid;
+    }
+  });
+  const up=e=>{ ptrs.delete(e.pointerId); lastDist=0; lastMid=null; if(!ptrs.size) cv.classList.remove('panning'); };
+  st.addEventListener('pointerup',up); st.addEventListener('pointercancel',up);
+  window.addEventListener('resize',applyView);
+  applyView();
+})();
 
 // ---- wiring ----
 $('seed').value=randSeed();
